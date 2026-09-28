@@ -24,7 +24,7 @@ Returns a data.frame with six columns.
 \itemize{
 \item \verb{$focal_time} Integer. The time, in terms of time distance from the present, at which the trait data were extracted. Should be equal for all rows
 as a unique BAMM_object updated for a unique \code{focal_time} is being extracted.
-\item \verb{$BAMM_sample_ID} Integer. ID of the posterior samples from which the diversification data are extracted.
+\item \verb{$BAMM_sample_ID} Character string. ID of the posterior samples from which the diversification data are extracted named as 'BAMM_X' where X is the numerical ID.
 \item \verb{$tip_ID} Character string. Tip labels of the branches cut-off at \code{focal_time}.
 \itemize{
 \item If \code{keep_tip_labels = TRUE} was used in \code{\link[=update_rates_and_regimes_for_focal_time]{update_rates_and_regimes_for_focal_time()}},
@@ -36,11 +36,11 @@ all cut-off branches are labeled using their tipward node ID.
 Regime IDs are independent across posterior samples.
 \item \verb{$rate_type} Character string. Type of rates: "lambda" for speciation rates, "mu" for extinction rates,
 and "net_diversification" for net diversification rates (lambda - mu).
-\item \verb{$rates} Numerical. Rates in \[number of events / branch / evolutionary time\].
+\item \verb{$rates} Numeric. Rates in \[number of events / branch / evolutionary time\].
 }
 }
 \description{
-Extracts regimes ID and tip rates from a \code{BAMM_object} that have been
+Extracts regime IDs and tip rates from a \code{BAMM_object} that has been
 updated to provide diversification data for a specific time in the past (i.e. the \code{focal_time}).
 Use \code{\link[=update_rates_and_regimes_for_focal_time]{update_rates_and_regimes_for_focal_time()}} to obtain
 a \code{BAMM_object} updated for a given \code{focal_time}.

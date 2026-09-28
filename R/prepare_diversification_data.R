@@ -6,56 +6,56 @@
 #'   mapped along branches, across selected posterior samples:
 #'
 #'   * Step 1: Set BAMM - Record BAMM settings and generate all input files needed for BAMM.
-#'   * Step 2: Run BAMM - Run BAMM and move output files in dedicated directory.
+#'   * Step 2: Run BAMM - Run BAMM and move output files into a dedicated directory.
 #'   * Step 3: Evaluate BAMM - Produce evaluation plots and ESS data.
 #'   * Step 4: Import BAMM outputs - Load `BAMM_object` in R and subset posterior samples.
 #'   * Step 5: Clean BAMM files - Remove files generated during the BAMM run.
 #'
 #'   The `BAMM_object` output is typically used as input to run deepSTRAPP with [deepSTRAPP::run_deepSTRAPP_for_focal_time()]
-#'   or [deepSTRAPP::run_deepSTRAPP_over_time()]. Diversification rates and regimes shift can be visualized with [deepSTRAPP::plot_BAMM_rates()].
+#'   or [deepSTRAPP::run_deepSTRAPP_over_time()]. Diversification rates and regime shift can be visualized with [deepSTRAPP::plot_BAMM_rates()].
 #'
 #'   BAMM is a model of diversification for time-calibrated phylogenies that explores complex diversification dynamics
 #'   by allowing multiple regime shifts across clades without a priori hypotheses on the location of such shifts.
 #'   It uses reversible jump Markov chain Monte Carlo (rjMCMC) to automatically explore a vast range of models with different
-#'   speciation and extinction rates, and different number and location of regime shits.
+#'   speciation and extinction rates, and different number and location of regime shifts.
 #'
-#'   This function will work only if you have the BAMM C++ program installed in your machine.
+#'   This function will work only if you have the BAMM C++ program installed on your machine.
 #'   See the BAMM website: \url{http://bamm-project.org/} and the companion R package `{BAMMtools}`.
 #'
 #' @param BAMM_install_directory_path Character string. The path to the directory where BAMM is.
-#'   Use '/' to separate directory and sub-directories. The path must end with '/'.
+#'   It can be an absolute path, or a path relative to the current working directory (Check with `getwd()` if needed).
 #' @param phylo Time-calibrated phylogeny. Object of class `"phylo"` as defined in R package `{ape}`. The phylogeny must be rooted and fully resolved.
 #'   BAMM does not currently work with fossils, so the tree must also be ultrametric.
 #' @param prefix_for_files Character string. Prefix to add to all BAMM files stored in the `BAMM_output_directory_path` if `keep_BAMM_outputs = TRUE`.
-#'   Files will be exported such as 'prefix_*' with an underscore separating the prefix and the file name. Default is `NULL` (no prefix is added).
+#'   Files will be exported as 'prefix_*' with an underscore separating the prefix and the file name. Default is `NULL` (no prefix is added).
 #' @param seed Integer. Set the seed to ensure reproducibility. Default is `NULL` (a random seed is used).
 #' @param numberOfGenerations Integer. Number of steps in the MCMC run. It should be set high enough to reach the equilibrium distribution
-#'  and allows posterior samples to be uncorrelated. Check the Effective Sample Size of parameters with coda::effectiveSize() in the Evaluation step.
+#'  and allow posterior samples to be uncorrelated. Check the Effective Sample Size of parameters with coda::effectiveSize() in the Evaluation step.
 #'  Default value is `10^7`.
-#' @param globalSamplingFraction Numerical. Global sampling fraction representing the overall proportion of terminals in the phylogeny compared to
+#' @param globalSamplingFraction Numeric. Global sampling fraction representing the overall proportion of terminals in the phylogeny compared to
 #'  the estimated overall richness in the clade. It acts as a multiplier on the rates needed to achieve such extant diversity.
 #'  Default is `1.0` (assuming all taxa are in the phylogeny).
 #' @param sampleProbsFilename Character string. The path to the `.txt` file used to provide clade-specific sampling fractions.
-#'  See [BAMMtools::samplingProbs()] to generate such file. If provided, `globalSamplingFraction` is ignored.
-#' @param expectedNumberOfShifts Integer. Set the expected number of regime shifts. It acts as an hyperparameter controlling the exponential prior distribution
+#'  See [BAMMtools::samplingProbs()] to generate such a file. If provided, `globalSamplingFraction` is ignored. Default = `NULL`.
+#' @param expectedNumberOfShifts Integer. Set the expected number of regime shifts. It acts as a hyperparameter controlling the exponential prior distribution
 #'  used to modulate reversible jumps across model configurations in the rjMCMC run.
 #'  If set to `NULL` (default), an empirical rule will be used to define this value: 1 regime shift expected for every 100 tips in the phylogeny, with a minimum of 1.
-#'  The best practice consists in trying several values and inspect the similarity of the prior and posterior distribution of the regime shift parameter.
+#'  The best practice is to try several values and inspect the similarity of the prior and posterior distribution of the regime shift parameter.
 #'  See [BAMMtools::plotPrior()] and the Evaluation step to produce such evaluation plot.
-#' @param eventDataWriteFreq Integer. Set the frequency in which to write the event data to the output file = the sampling frequency of posterior samples.
-#'  If set to `NULL` (default), will set frequency such as 2000 posterior samples are recorded such as `eventDataWriteFreq = numberOfGenerations / 2000`.
-#' @param burn_in Numerical. Proportion of posterior samples removed from the BAMM output to ensure that the remaining samples where drawn once the equilibrium distribution was reached.
+#' @param eventDataWriteFreq Integer. Set the frequency at which to write the event data to the output file = the sampling frequency of posterior samples.
+#'  If set to `NULL` (default), will set the frequency such that 2000 posterior samples are recorded, i.e. `eventDataWriteFreq = numberOfGenerations / 2000`.
+#' @param burn_in Numeric. Proportion of posterior samples removed from the BAMM output to ensure that the remaining samples were drawn once the equilibrium distribution was reached.
 #'  This can be evaluated looking at the MCMC trace (see Evaluation step). Default is `0.25`.
-#' @param nb_posterior_samples Numerical. Number of posterior samples to extract, after removing the burn-in, in the final `BAMM_object` to use for downstream analyses.
+#' @param nb_posterior_samples Numeric. Number of posterior samples to extract, after removing the burn-in, in the final `BAMM_object` to use for downstream analyses.
 #'  Default = `1000`.
 #' @param additional_BAMM_settings List of named elements. Additional settings options for BAMM provided as a list of named arguments.
 #'  Ex: `list(lambdaInit0 = 0.5, muInit0 = 0)`. See available settings in the template file provided within the deepSTRAPP package files as 'BAMM_template_diversification.txt'.
 #'  The template can also be loaded directly in R with `utils::data(BAMM_template_diversification)` and displayed with `print(BAMM_template_diversification)`.
 #' @param BAMM_output_directory_path Character string. The path to the directory used to store input/output files generated.
-#'  Use '/' to separate directory and subdirectories. It must end with '/'.
+#'  It can be an absolute path, or a path relative to the current working directory (Check with `getwd()` if needed).
 #' @param keep_BAMM_outputs Logical. Whether the `BAMM_output_directory` should be kept after the run. Default = `TRUE`.
-#' @param MAP_odd_ratio_threshold Numerical. Controls the definition of 'core-shifts' used to distinguish across configurations when fetching the MAP samples.
-#'   Shifts that have an odd-ratio of marginal posterior probability / prior lower than `MAP_odd_ratio_threshold` are ignored. See [BAMMtools::getBestShiftConfiguration()]. Default = `5`.
+#' @param MAP_odds_ratio_threshold Numeric. Controls the definition of 'core-shifts' used to distinguish across configurations when fetching the MAP samples.
+#'   Shifts that have an odds ratio of marginal posterior probability / prior lower than `MAP_odds_ratio_threshold` are ignored. See [BAMMtools::getBestShiftConfiguration()]. Default = `5`.
 #' @param skip_evaluations Logical. Whether to skip the Evaluation step including MCMC trace, ESS, and prior/posterior comparisons for expected number of shifts. Default = `FALSE`.
 #' @param plot_evaluations Logical. Whether to display the plots generated during the Evaluation step: MCMC trace, and prior/posterior comparisons for expected number of shifts. Default = `TRUE`.
 #' @param save_evaluations Logical. Whether to save the outputs of evaluations in a table (ESS), and PDFs (MCMC trace, and prior/posterior comparisons for expected number of shifts)
@@ -92,13 +92,13 @@
 #'  Step 3: Evaluate BAMM
 #'   * Plot the MCMC trace = evolution of logLik across MCMC generations. Output file = 'MCMC_trace_logLik.pdf'.
 #'   * Compute the Effective Sample Size (ESS) across posterior samples (after removing burn-in) using [coda::effectiveSize()].
-#'     This is a way to evaluate if your MCMC runs has enough generations to produce robust estimates. Ideally, ESS should be higher than 200.
+#'     This is a way to evaluate if your MCMC runs have enough generations to produce robust estimates. Ideally, ESS should be higher than 200.
 #'     Output file = 'ESS_df.csv'.
 #'   * Plot the comparison of prior and posterior distributions of the number of regime shifts with [BAMMtools::plotPrior].
 #'     Output file = 'PP_nb_shifts_plot.pdf'.
 #'     A good value for `expectedNumberOfShifts` is one with high similarities between the distributions
 #'     hinting that the information in the data coincides with your expectations for the number of regime shifts.
-#'     The best practice consists in trying several values to control if it affects or not the final output.
+#'     The best practice is to try several values to check whether it affects the final output.
 #'
 #'  Step 4: Import BAMM outputs
 #'   * Load BAMM outputs with [BAMMtools::getEventData].
@@ -108,7 +108,7 @@
 #'   * Record the marginal posterior probability of regime shift along branches based on the proportion of samples harboring a regime shift along each branch.
 #'     (See [BAMMtools::marginalShiftProbsTree()]). Result is stored in `$MSP_tree` as phylogenetic tree with `$edge.length` scaled to the marginal posterior probability.
 #'   * Extract the Maximum A Posteriori probability (MAP) configuration = the configuration of regime shift location found the most frequently among the posterior samples.
-#'     (See [BAMMtools::getBestShiftConfiguration()]). This ignores shifts that have an odd-ratio of marginal posterior probability / prior lower than `MAP_odd_ratio_threshold`
+#'     (See [BAMMtools::getBestShiftConfiguration()]). This ignores shifts that have an odds ratio of marginal posterior probability / prior lower than `MAP_odds_ratio_threshold`
 #'     to avoid noise from non-core shifts. MAP sample indices are stored in `$MAP_indices`. Diversification rates and shift locations on branches are then averaged across all MAP samples and
 #'     recorded as an object of class `"bammdata"` in `$MAP_BAMM_object` with a single `$eventData` table used to plot regime shifts on the phylogeny with [deepSTRAPP::plot_BAMM_rates()].
 #'   * Extract the Maximum Shift Credibility (MSC) configuration = the configuration of regime shift location with the highest product of marginal probabilities across branches.
@@ -128,58 +128,58 @@
 #'
 #' This function relies on BAMM to provide a reliable solution to map diversification rates and regime shifts on a time-calibrated phylogeny
 #' and obtain the `BAMM_object` object needed to run the deepSTRAPP workflow ([run_deepSTRAPP_for_focal_time], [run_deepSTRAPP_over_time]).
-#' However, it is one option among others for modeling diversification on phylogenies.
-#' You may wish to explore alternatives models such as LSBDS model in RevBayes (Höhna et al., 2016), the MTBD model (Barido-Sottani et al., 2020),
+#' BAMM is one option among others for modeling diversification on phylogenies.
+#' You may wish to explore alternative models such as the LSBDS model in RevBayes (Höhna et al., 2016), the MTBD model (Barido-Sottani et al., 2020),
 #' or the ClaDS2 model (Maliet et al., 2019) for your own data.
 #' However, you will need Bayesian models that infer regime shifts to be able to perform STRAPP tests (Rabosky & Huang, 2016).
 #' Additionally, you need to format the model output such as in `BAMM_object`, so it can be used in a deepSTRAPP workflow.
 #'
-#' This function perform a single BAMM run to infer diversification rates and regime shifts.
+#' This function performs a single BAMM run to infer diversification rates and regime shifts.
 #' Due to the stochastic nature of the exploration of the parameter space with MCMC process,
-#' best practice recommend to ran multiple runs and check for convergence of the MCMC traces,
+#' best practice recommends running multiple runs and check for convergence of the MCMC traces,
 #' ensuring that the region of high probability has been reached by your MCMC runs.
 #'
 #' @return The function returns a `BAMM_object` of class `"bammdata"` which is a list with at least 22 elements.
 #'
 #'   Phylogeny-related elements used to plot a phylogeny with [ape::plot.phylo()]:
-#'   * `$edge` Matrix of integers. Defines the tree topology by providing rootward and tipward node ID of each edge.
+#'   * `$edge` Integer matrix. Defines the tree topology by providing rootward and tipward node ID of each edge.
 #'   * `$Nnode` Integer. Number of internal nodes.
-#'   * `$tip.label` Vector of character strings. Labels of all tips.
-#'   * `$edge.length` Vector of numerical. Length of edges/branches.
-#'   * `$node.label` Vector of character strings. Labels of all internal nodes. (Present only if present in the initial `BAMM_object`)
+#'   * `$tip.label` Character vector. Labels of all tips.
+#'   * `$edge.length` Numeric vector. Length of edges/branches.
+#'   * `$node.label` Character vector. Labels of all internal nodes. (Present only if present in the initial `BAMM_object`)
 #'
 #'   BAMM internal elements used for tree exploration:
-#'   * `$begin` Vector of numerical. Absolute time since root of edge/branch start (rootward).
-#'   * `$end` Vector of numerical.  Absolute time since root of edge/branch end (tipward).
-#'   * `$downseq` Vector of integers. Order of node visits when using a pre-order tree traversal.
+#'   * `$begin` Numeric vector. Absolute time since root of edge/branch start (rootward).
+#'   * `$end` Numeric vector.  Absolute time since root of edge/branch end (tipward).
+#'   * `$downseq` Integer vector. Order of node visits when using a pre-order tree traversal.
 #'   * `$lastvisit` ID of the last node visited when starting from the node in the corresponding position in `$downseq`.
 #'
 #'   BAMM elements summarizing diversification data:
-#'   * `$numberEvents` Vector of integer. Number of events/macroevolutionary regimes (k+1) recorded in each posterior configuration. k = number of shifts.
+#'   * `$numberEvents` Integer vector. Number of events/macroevolutionary regimes (k+1) recorded in each posterior configuration. k = number of shifts.
 #'   * `$eventData` List of data.frames. One per posterior sample. Records shift events and macroevolutionary regimes parameters. 1st line = Background root regime.
-#'   * `$eventVectors` List of integer vectors. One per posterior sample. Record regime ID per branches.
-#'   * `$tipStates` List of named integer vectors. One per posterior sample. Record regime ID per tips.
-#'   * `$tipLambda` List of named numerical vectors. One per posterior sample. Record speciation rates per tips.
-#'   * `$tipMu` List of named numerical vectors. One per posterior sample. Record extinction rates per tips.
-#'   * `$eventBranchSegs` List of matrix of numerical. One per posterior sample. Record regime ID per segments of branches.
-#'   * `$meanTipLambda` Vector of named numerical. Mean tip speciation rates across all posterior configurations of tips.
-#'   * `$meanTipMu` Vector of named numerical. Mean tip extinction rates across all posterior configurations of tips.
+#'   * `$eventVectors` List of integer vectors. One per posterior sample. Record regime ID per branch.
+#'   * `$tipStates` List of named integer vectors. One per posterior sample. Record regime ID per tip.
+#'   * `$tipLambda` List of named numeric vectors. One per posterior sample. Record speciation rates per tip.
+#'   * `$tipMu` List of named numeric vectors. One per posterior sample. Record extinction rates per tip.
+#'   * `$eventBranchSegs` List of numeric matrices. One per posterior sample. Record regime ID per segment of branches.
+#'   * `$meanTipLambda` Named numeric vector. Mean tip speciation rates across all posterior configurations of tips.
+#'   * `$meanTipMu` Named numeric vector. Mean tip extinction rates across all posterior configurations of tips.
 #'   * `$type` Character string. Set the type of data modeled with BAMM. Should be "diversification".
 #'
 #'   Additional elements providing key information for downstream analyses:
 #'   * `$expectedNumberOfShifts` Integer. The expected number of regime shifts used to set the prior in BAMM.
 #'   * `$MSP_tree` Object of class `phylo`. List of 4 elements duplicating information from the Phylogeny-related elements above,
 #'      except `$MSP_tree$edge.length` is recording the Marginal Shift Probability of each branch (i.e., the probability of a regime shift to occur along each branch)
-#'   * `$MAP_indices` Vector of integers. The indices of the Maximum A Posteriori probability (MAP) configurations among the posterior samples.
-#'   * `$MAP_BAMM_object`. List of 18 elements of class `"bammdata" recording the mean rates and regime shift locations found across
-#'      the Maximum A Posteriori probability (MAP) configurations. All BAMM elements summarizing diversification data holds a single entry describing
+#'   * `$MAP_indices` Integer vector. The indices of the Maximum A Posteriori probability (MAP) configurations among the posterior samples.
+#'   * `$MAP_BAMM_object`. List of 18 elements of class `"bammdata"` recording the mean rates and regime shift locations found across
+#'      the Maximum A Posteriori probability (MAP) configurations. All BAMM elements summarizing diversification data hold a single entry describing
 #'      this mean diversification history.
-#'   * `$MSC_indices` Vector of integers. The indices of the Maximum Shift Credibility (MSC) configurations among the posterior samples.
-#'   * `$MSC_BAMM_object` List of 18 elements of class `"bammdata" recording the mean rates and regime shift locations found across
-#'      the Maximum Shift Credibility (MSC) configurations. All BAMM elements summarizing diversification data holds a single entry describing
+#'   * `$MSC_indices` Integer vector. The indices of the Maximum Shift Credibility (MSC) configurations among the posterior samples.
+#'   * `$MSC_BAMM_object` List of 18 elements of class `"bammdata"` recording the mean rates and regime shift locations found across
+#'      the Maximum Shift Credibility (MSC) configurations. All BAMM elements summarizing diversification data hold a single entry describing
 #'      this mean diversification history.
 #'
-#'  The function also produces files listed in the Details section and stored in the the `BAMM_output_directory`.
+#'  The function also produces files listed in the Details section and stored in the `BAMM_output_directory`.
 #'
 #' @author Maël Doré
 #'
@@ -276,7 +276,7 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
                                           additional_BAMM_settings = list(),
                                           BAMM_output_directory_path = NULL, # "./BAMM_outputs/"
                                           keep_BAMM_outputs = TRUE,
-                                          MAP_odd_ratio_threshold = 5,
+                                          MAP_odds_ratio_threshold = 5,
                                           skip_evaluations = FALSE,
                                           plot_evaluations = TRUE,
                                           save_evaluations = TRUE)
@@ -285,10 +285,21 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
   ### Check input validity
   {
     ## BAMM_install_directory_path
-    # BAMM_install_directory_path must be a directory, so it must end with '/'
-    if (!stringr::str_detect(BAMM_install_directory_path, pattern = "/$"))
+    # Build robust absolute BAMM path
+    BAMM_path <- file.path(BAMM_install_directory_path, "bamm")
+    BAMM_path <- normalizePath(BAMM_path, mustWork = FALSE)
+    # Try to access BAMM help to check if the path is valid
+    BAMM_help <- tryCatch(
+      # Test to run
+      system(paste0(BAMM_path, " --help"), intern = TRUE),
+      # Provide NULL if getting a warning
+      warning = function(w) { NULL },
+      # Provide NULL if getting an error
+      error = function(e) { NULL }
+    )
+    if (is.null(BAMM_help) || !any(grepl("^Usage: bamm", BAMM_help)))
     {
-      stop(paste0("'BAMM_install_directory_path' must end with '/'"))
+      stop("Could not execute BAMM at '", BAMM_path,"'. Please check that BAMM is correctly installed or if the path provided correct.")
     }
 
     ## phylo
@@ -347,7 +358,7 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
     }
 
     ## globalSamplingFraction
-    # globalSamplingFraction should be a numerical between 0 and 1
+    # globalSamplingFraction should be a numeric between 0 and 1
     if ((globalSamplingFraction < 0) | (globalSamplingFraction > 1))
     {
       stop(paste0("'globalSamplingFraction' represents the overall proportion of terminals in the phylogeny compared to the estimated overall richness in the clade.\n",
@@ -362,7 +373,7 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
     }
 
     ## sampleProbsFilename
-    # If provided, sampleProbsFilename must be a directory, so it must end with '/'
+    # If provided, sampleProbsFilename must be a text file, so it must end with '.txt'
     if (!is.null(sampleProbsFilename))
     {
       if (!stringr::str_detect(sampleProbsFilename, pattern = "\\.txt$"))
@@ -446,17 +457,10 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
     if (nb_posterior_after_burn_in < nb_posterior_samples)
     {
       stop(paste0("'nb_posterior_samples' requested in not compatible with the number of posterior samples retainted after burn-in.\n",
-                  "The number of remaining samples = 'numberOfGenerations'/'eventData_freq' x (1 - 'burn_in'). Here it is ",nb_posterior_after_burn_in,".\n",
+                  "The number of remaining samples = 'numberOfGenerations'/'eventDataWriteFreq' x (1 - 'burn_in'). Here it is ",nb_posterior_after_burn_in,".\n",
                   "'nb_posterior_samples' requested is set to ", nb_posterior_samples,".\n",
-                  "Please adjust 'numberOfGenerations', 'eventData_freq', 'burn_in', or 'nb_posterior_samples' to obtain compatible values."))
+                  "Please adjust 'numberOfGenerations', 'eventDataWriteFreq', 'burn_in', or 'nb_posterior_samples' to obtain compatible values."))
 
-    }
-
-    ## BAMM_output_directory_path
-    # BAMM_output_directory_path must be a directory, so it must end with '/'
-    if (!stringr::str_detect(BAMM_output_directory_path, pattern = "/$"))
-    {
-      stop(paste0("'BAMM_output_directory_path' must end with '/'"))
     }
 
     ## skip_evaluations & (plot_evaluations | save_evaluations)
@@ -482,9 +486,37 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
     }
   }
 
-  ## Save initial par() and reassign them on exit
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar))
+  ## Save the graphical parameters on entry and, on exit, restore only those this function actually changed.
+
+  # List graphical parameters describing the plot that now exists (Never to restore as they describe the current plot state)
+  plot_state_par_names <- c("usr", "plt", "fig", "mfg", "new", "xaxp", "yaxp", "pin")
+  # Save current graphic parameters
+  entry_par <- par(no.readonly = TRUE)
+
+  # On exit, compare changes in par and restore the ones that have change, but the plot_state_par
+  on.exit({
+    # List par on exit
+    exit_par <- par(no.readonly = TRUE)
+    # Identify differences with initial parameters
+    changed_par_names <- names(entry_par)[!vapply(X = names(entry_par),
+                                                  FUN = function (x) { isTRUE(all.equal(entry_par[[x]], exit_par[[x]])) },
+                                                  FUN.VALUE = logical(1))]
+    # Exclude plot state parameters from the restore
+    changed_par_names <- setdiff(changed_par_names, plot_state_par_names)
+    # Restore parameters if any has changed
+    if (length(changed_par_names) > 0)
+    {
+      par(entry_par[changed_par_names])
+    }
+
+    # Force new to FALSE, so the next plot calling plot.new() start on a new clean window,
+    # But only if we actually plot something
+    if (isTRUE(plot_evaluations) || (isTRUE(exit_par$new) && !isTRUE(entry_par$new)))
+    {
+      par(new = FALSE)
+    }
+  }, add = TRUE)
+
 
   #### ----------- Step 1: Set BAMM ----------- ####
 
@@ -500,6 +532,8 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
     if (!dir.exists(paths = file.path(BAMM_output_directory_path)))
     {
       dir.create(path = file.path(BAMM_output_directory_path))
+      cat(paste0("WARNING: the directory provided as 'BAMM_output_directory_path' does not exist.\n",
+                 "It was created at ", BAMM_output_directory_path,"'.\n\n"))
     }
 
     ## Export the phylogeny in a .tree file
@@ -507,9 +541,9 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
     # Build path
     if (is.null(prefix_for_files))
     {
-      phy_path <- file.path(paste0(BAMM_output_directory_path, "phylogeny.tree"))
+      phy_path <- file.path(BAMM_output_directory_path, "phylogeny.tree")
     } else {
-      phy_path <- file.path(paste0(BAMM_output_directory_path, prefix_for_files,"_phylogeny.tree"))
+      phy_path <- file.path(BAMM_output_directory_path, paste0(prefix_for_files,"_phylogeny.tree"))
     }
     # Export tree
     ape::write.tree(phy = phylo, file = phy_path)
@@ -699,9 +733,9 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
     # Build path to priors file
     if (is.null(prefix_for_files))
     {
-      priors_path <- file.path(paste0(BAMM_output_directory_path, "priors.txt"))
+      priors_path <- file.path(BAMM_output_directory_path, "priors.txt")
     } else {
-      priors_path <- file.path(paste0(BAMM_output_directory_path, prefix_for_files,"_priors.txt"))
+      priors_path <- file.path(BAMM_output_directory_path, paste0(prefix_for_files,"_priors.txt"))
     }
     # Generate priors file
     invisible(capture.output(BAMMtools::setBAMMpriors(phy = phylo, outfile = priors_path, suppressWarning = TRUE)))
@@ -1175,9 +1209,9 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
     # Build path
     if (is.null(prefix_for_files))
     {
-      config_file_path <- file.path(paste0(BAMM_output_directory_path, "config_file.txt"))
+      config_file_path <- file.path(BAMM_output_directory_path, "config_file.txt")
     } else {
-      config_file_path <- file.path(paste0(BAMM_output_directory_path, prefix_for_files,"_config_file.txt"))
+      config_file_path <- file.path(BAMM_output_directory_path, paste0(prefix_for_files,"_config_file.txt"))
     }
     # Export my_config_file
     writeLines(text = my_config_file, con = config_file_path)
@@ -1191,9 +1225,15 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
   ## Run BAMM and move output files in dedicated directory
 
   {
-    ## run BAMM
-    BAMM_path <- file.path(paste0(BAMM_install_directory_path, "bamm"))
-    system(paste0(BAMM_path, " -c ", config_file_path))
+    ## Build a robust absolute path to BAMM
+    BAMM_path <- file.path(BAMM_install_directory_path, "bamm")
+    BAMM_path <- normalizePath(BAMM_path, mustWork = FALSE)
+
+    ## Build a robust absolute path to config_file
+    config_file_path_absolute <- normalizePath(config_file_path, mustWork = TRUE)
+
+    ## Run BAMM
+    system(paste0(BAMM_path, " -c ", config_file_path_absolute))
 
     ### Outputs
     # run_info.txt file containing a summary of your parameters/settings
@@ -1206,22 +1246,22 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
     # Detect output files
     if (is.null(prefix_for_files))
     {
-      file.rename(from = runInfoFilename, to = file.path(paste0(BAMM_output_directory_path, runInfoFilename)))
-      file.rename(from = mcmcOutfile, to = file.path(paste0(BAMM_output_directory_path, mcmcOutfile)))
-      file.rename(from = eventDataOutfile, to = file.path(paste0(BAMM_output_directory_path, eventDataOutfile)))
-      file.rename(from = chainSwapFileName, to = file.path(paste0(BAMM_output_directory_path, chainSwapFileName)))
+      file.rename(from = runInfoFilename, to = file.path(BAMM_output_directory_path, runInfoFilename))
+      file.rename(from = mcmcOutfile, to = file.path(BAMM_output_directory_path, mcmcOutfile))
+      file.rename(from = eventDataOutfile, to = file.path(BAMM_output_directory_path, eventDataOutfile))
+      file.rename(from = chainSwapFileName, to = file.path(BAMM_output_directory_path, chainSwapFileName))
       if (outputAcceptanceInfo == 1)
       {
-        file.rename(from = acceptanceInfoFileName, to = file.path(paste0(BAMM_output_directory_path, acceptanceInfoFileName)))
+        file.rename(from = acceptanceInfoFileName, to = file.path(BAMM_output_directory_path, acceptanceInfoFileName))
       }
     } else {
-      file.rename(from = file.path(paste0(prefix_for_files, "_", runInfoFilename)), to = file.path(paste0(BAMM_output_directory_path, prefix_for_files, "_", runInfoFilename)))
-      file.rename(from = file.path(paste0(prefix_for_files, "_", mcmcOutfile)), to = file.path(paste0(BAMM_output_directory_path, prefix_for_files, "_", mcmcOutfile)))
-      file.rename(from = file.path(paste0(prefix_for_files, "_", eventDataOutfile)), to = file.path(paste0(BAMM_output_directory_path, prefix_for_files, "_", eventDataOutfile)))
-      file.rename(from = file.path(paste0(prefix_for_files, "_", chainSwapFileName)), to = file.path(paste0(BAMM_output_directory_path, prefix_for_files, "_", chainSwapFileName)))
+      file.rename(from = file.path(paste0(prefix_for_files, "_", runInfoFilename)), to = file.path(BAMM_output_directory_path, paste0(prefix_for_files, "_", runInfoFilename)))
+      file.rename(from = file.path(paste0(prefix_for_files, "_", mcmcOutfile)), to = file.path(BAMM_output_directory_path, paste0(prefix_for_files, "_", mcmcOutfile)))
+      file.rename(from = file.path(paste0(prefix_for_files, "_", eventDataOutfile)), to = file.path(BAMM_output_directory_path, paste0(prefix_for_files, "_", eventDataOutfile)))
+      file.rename(from = file.path(paste0(prefix_for_files, "_", chainSwapFileName)), to = file.path(BAMM_output_directory_path, paste0(prefix_for_files, "_", chainSwapFileName)))
       if (outputAcceptanceInfo == 1)
       {
-        file.rename(from = acceptanceInfoFileName, to = file.path(paste0(BAMM_output_directory_path, prefix_for_files, "_", acceptanceInfoFileName)))
+        file.rename(from = acceptanceInfoFileName, to = file.path(BAMM_output_directory_path, paste0(prefix_for_files, "_", acceptanceInfoFileName)))
       }
     }
   }
@@ -1241,9 +1281,9 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
       # Load the MCMC log file
       if (is.null(prefix_for_files))
       {
-        MCMC_log <- utils::read.csv(file.path(paste0(BAMM_output_directory_path, mcmcOutfile)), header = T)
+        MCMC_log <- utils::read.csv(file.path(BAMM_output_directory_path, mcmcOutfile), header = T)
       } else {
-        MCMC_log <- utils::read.csv(file.path(paste0(BAMM_output_directory_path, prefix_for_files, "_", mcmcOutfile)), header = T)
+        MCMC_log <- utils::read.csv(file.path(BAMM_output_directory_path, paste0(prefix_for_files, "_", mcmcOutfile)), header = T)
       }
 
       # Find generations used to cut-off the burn-in
@@ -1288,9 +1328,9 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
       {
         if (is.null(prefix_for_files))
         {
-          MCMC_logLik_path <- file.path(paste0(BAMM_output_directory_path, "MCMC_trace_logLik.pdf"))
+          MCMC_logLik_path <- file.path(BAMM_output_directory_path, "MCMC_trace_logLik.pdf")
         } else {
-          MCMC_logLik_path <- file.path(paste0(BAMM_output_directory_path, prefix_for_files, "_MCMC_trace_logLik.pdf"))
+          MCMC_logLik_path <- file.path(BAMM_output_directory_path, paste0(prefix_for_files, "_MCMC_trace_logLik.pdf"))
         }
         cowplot::save_plot(plot = MCMC_logLik_ggplot,
                            filename = MCMC_logLik_path,
@@ -1318,9 +1358,9 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
       {
         if (is.null(prefix_for_files))
         {
-          utils::write.csv(x = ESS_df, file = file.path(paste0(BAMM_output_directory_path, "ESS_df.csv")), row.names = FALSE)
+          utils::write.csv(x = ESS_df, file = file.path(BAMM_output_directory_path, "ESS_df.csv"), row.names = FALSE)
         } else {
-          utils::write.csv(x = ESS_df, file = file.path(paste0(BAMM_output_directory_path, prefix_for_files, "_ESS_df.csv")), row.names = FALSE)
+          utils::write.csv(x = ESS_df, file = file.path(BAMM_output_directory_path, paste0(prefix_for_files, "_ESS_df.csv")), row.names = FALSE)
         }
       }
 
@@ -1329,6 +1369,7 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
       # Display plot if requested
       if (plot_evaluations)
       {
+        # graphics::plot.new() # Use a different panel
         BAMMtools::plotPrior(mcmc = MCMC_log,
                              expectedNumberOfShifts = expectedNumberOfShifts,
                              burnin = burn_in,
@@ -1340,9 +1381,9 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
       {
         if (is.null(prefix_for_files))
         {
-          PP_nb_shifts_path <- file.path(paste0(BAMM_output_directory_path, "PP_nb_shifts_plot.pdf"))
+          PP_nb_shifts_path <- file.path(BAMM_output_directory_path, "PP_nb_shifts_plot.pdf")
         } else {
-          PP_nb_shifts_path <- file.path(paste0(BAMM_output_directory_path, prefix_for_files, "_PP_nb_shifts_plot.pdf"))
+          PP_nb_shifts_path <- file.path(BAMM_output_directory_path, paste0(prefix_for_files, "_PP_nb_shifts_plot.pdf"))
         }
         grDevices::pdf(file = file.path(PP_nb_shifts_path),
                        width = 10, height = 8)
@@ -1368,9 +1409,9 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
     ## Build path to eventData file
     if (is.null(prefix_for_files))
     {
-      eventData_path <- file.path(paste0(BAMM_output_directory_path, eventDataOutfile))
+      eventData_path <- file.path(BAMM_output_directory_path, eventDataOutfile)
     } else {
-      eventData_path <- file.path(paste0(BAMM_output_directory_path, prefix_for_files, "_", eventDataOutfile))
+      eventData_path <- file.path(BAMM_output_directory_path, paste0(prefix_for_files, "_", eventDataOutfile))
     }
 
     ## Create the bammdata summarizing BAMM outputs
@@ -1389,6 +1430,12 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
     sample_indices <- sample(x = 1:length(BAMM_data_output$eventData), size = nb_posterior_samples)
     BAMM_posterior_samples_data <- BAMMtools::subsetEventData(BAMM_data_output, index = sample_indices)
 
+    ## Name the tip-level elements with the tip labels
+    # BAMMtools::getEventData() returns $tipStates, $tipLambda, $tipMu, $meanTipLambda and $meanTipMu
+    # unnamed, ordered by tip ID. Naming them makes the mapping to tips explicit, and is required by the
+    # deepSTRAPP functions that match tips by label, such as deepSTRAPP::compute_STRAPP_test_for_focal_time().
+    BAMM_posterior_samples_data <- name_tip_elements(BAMM_posterior_samples_data)
+
     ## Add the expectedNumberOfShifts as information in the output
     BAMM_posterior_samples_data$expectedNumberOfShifts <- expectedNumberOfShifts
 
@@ -1397,20 +1444,21 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
     BAMM_posterior_samples_data$MSP_tree <- MSP_tree
 
     ## Extract the Maximum A Posteriori probability (MAP) configuration = the configuration of shift location showing up the most in the posterior sample
-    # Ignore shifts that have an odd-ratio of marginal posterior probability / prior < 'MAP_odd_ratio_threshold' to avoid noise from non-core shifts
+    # Ignore shifts that have an odds ratio of marginal posterior probability / prior < 'MAP_odds_ratio_threshold' to avoid noise from non-core shifts
     # Rates are then averaged across all samples with the most frequent shift configuration of core-shifts
 
-    MAP_detection <- BAMMtools::credibleShiftSet(BAMM_posterior_samples_data,
+    MAP_detection <- BAMMtools::credibleShiftSet(ephy = BAMM_posterior_samples_data,
                                                  expectedNumberOfShifts = expectedNumberOfShifts,
-                                                 threshold = MAP_odd_ratio_threshold,
+                                                 threshold = MAP_odds_ratio_threshold,
                                                  set.limit = 0.95)
     # Extract indices of MAP samples
     BAMM_posterior_samples_data$MAP_indices <- MAP_detection$indices[[1]]
 
     # Compute mean rates/regimes across MAP samples
-    MAP_BAMM_object <- BAMMtools::getBestShiftConfiguration(BAMM_posterior_samples_data,
-                                                            expectedNumberOfShifts = expectedNumberOfShifts,
-                                                            threshold = MAP_odd_ratio_threshold) # Odd-ratio threshold used to select core-shifts used to compare configurations
+    # MAP_BAMM_object <- BAMMtools::getBestShiftConfiguration(x = BAMM_posterior_samples_data,
+    MAP_BAMM_object <- getBestShiftConfiguration_fixed(x = BAMM_posterior_samples_data,
+                                                       expectedNumberOfShifts = expectedNumberOfShifts,
+                                                       threshold = MAP_odds_ratio_threshold) # Odds ratio threshold used to select core-shifts used to compare configurations
 
     # Reorder elements to fit order in the main BAMM_object
     if ("node.label" %in% names(MAP_BAMM_object))
@@ -1425,6 +1473,9 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
                                            "eventVectors", "tipStates", "tipLambda", "tipMu", "eventBranchSegs",
                                            "meanTipLambda", "meanTipMu", "type")]
     }
+    ## Name the tip-level elements with the tip labels, as for the main BAMM_object
+    MAP_BAMM_object <- name_tip_elements(MAP_BAMM_object)
+
     class(MAP_BAMM_object) <- "bammdata"
     attr(x = MAP_BAMM_object, which = "order") <- "cladewise"
 
@@ -1453,6 +1504,9 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
                                            "eventVectors", "tipStates", "tipLambda", "tipMu", "eventBranchSegs",
                                            "meanTipLambda", "meanTipMu", "type")]
     }
+    ## Name the tip-level elements with the tip labels, as for the main BAMM_object
+    MSC_BAMM_object <- name_tip_elements(MSC_BAMM_object)
+
     class(MSC_BAMM_object) <- "bammdata"
     attr(x = MSC_BAMM_object, which = "order") <- "cladewise"
 
@@ -1477,23 +1531,23 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
       # Remove files generated during the BAMM run
       if (is.null(prefix_for_files))
       {
-        file.remove(file.path(paste0(BAMM_output_directory_path, runInfoFilename)))
-        file.remove(file.path(paste0(BAMM_output_directory_path, mcmcOutfile)))
-        file.remove(file.path(paste0(BAMM_output_directory_path, eventDataOutfile)))
-        file.remove(file.path(paste0(BAMM_output_directory_path, chainSwapFileName)))
+        file.remove(file.path(BAMM_output_directory_path, runInfoFilename))
+        file.remove(file.path(BAMM_output_directory_path, mcmcOutfile))
+        file.remove(file.path(BAMM_output_directory_path, eventDataOutfile))
+        file.remove(file.path(BAMM_output_directory_path, chainSwapFileName))
 
         if (outputAcceptanceInfo == 1)
         {
-          file.remove(file.path(paste0(BAMM_output_directory_path, acceptanceInfoFileName)))
+          file.remove(file.path(BAMM_output_directory_path, acceptanceInfoFileName))
         }
       } else {
-        file.remove(file.path(paste0(BAMM_output_directory_path, prefix_for_files, "_", runInfoFilename)))
-        file.remove(file.path(paste0(BAMM_output_directory_path, prefix_for_files, "_", mcmcOutfile)))
-        file.remove(file.path(paste0(BAMM_output_directory_path, prefix_for_files, "_", eventDataOutfile)))
-        file.remove(file.path(paste0(BAMM_output_directory_path, prefix_for_files, "_", chainSwapFileName)))
+        file.remove(file.path(BAMM_output_directory_path, paste0(prefix_for_files, "_", runInfoFilename)))
+        file.remove(file.path(BAMM_output_directory_path, paste0(prefix_for_files, "_", mcmcOutfile)))
+        file.remove(file.path(BAMM_output_directory_path, paste0(prefix_for_files, "_", eventDataOutfile)))
+        file.remove(file.path(BAMM_output_directory_path, paste0(prefix_for_files, "_", chainSwapFileName)))
         if (outputAcceptanceInfo == 1)
         {
-          file.remove(file.path(paste0(BAMM_output_directory_path, prefix_for_files, "_", acceptanceInfoFileName)))
+          file.remove(file.path(BAMM_output_directory_path, paste0(prefix_for_files, "_", acceptanceInfoFileName)))
         }
       }
 
@@ -1518,6 +1572,156 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
 # usethis::use_build_ignore("BAMM_outputs/*")
 
 
+### Internal function replacing BAMMtools::getBestShiftConfiguration()
+
+## Used to aggregate rates/regimes across posterior samples with the Maximum A Posteriori probability (MAP)
+## Fix a potential issue with the way children tips of core-shift nodes are identified
+
+# Source: BAMMtools::getBestShiftConfiguration()
+# Author: Dan Rabosky
+# Fixes: Maël Doré
+
+#' @importFrom ape as.phylo
+#' @importFrom BAMMtools credibleShiftSet subsetEventData getEventData
+
+
+getBestShiftConfiguration_fixed <- function (x,
+                                             expectedNumberOfShifts,
+                                             threshold = 5) # Odds ratio threshold used to select core-shifts used to compare configurations
+{
+  # Build credibleShiftSet if needed
+  if (inherits(x, "bammdata"))
+  {
+    x <- BAMMtools::credibleShiftSet(x, expectedNumberOfShifts, threshold,
+                                     set.limit = 0.95)
+  } else if (inherits(x, "credibleshiftset")) {
+  } else {
+    stop("Argument x must be of class bammdata or credibleshiftset\n")
+  }
+  class(x) <- "bammdata"
+
+  # Subset the MAP configurations
+  subb <- BAMMtools::subsetEventData(x, index = x$indices[[1]])
+
+  ## Identify location of core-shifts in MAP configurations
+  # Add root among the core-shifts (core-shifts are stored as tipward node ID, not edge ID!)
+  coreshifts <- c((length(x$tip.label) + 1), x$coreshifts)
+  # Get core-shifts as intersection of events recorded in MAP config and all core-shifts
+  coreshifts <- intersect(subb$eventData[[1]]$node, coreshifts)
+
+  # rbind all eventData tables. All have the same location for core-shifts, but they can differ in any other respect:
+  # nb of other shifts, location alogn edges, diversification rates
+  for (i in 1:length(subb$eventData))
+  {
+    if (i == 1)
+    {
+      ff <- subb$eventData[[i]]
+    }
+    ff <- rbind(ff, subb$eventData[[i]])
+  }
+  # Initial vectors for core-shifts
+  xn <- numeric(length(coreshifts))
+  xc <- character(length(coreshifts))
+
+  if (x$type == "diversification")
+  {
+    # Initialize df to record info on core-shifts as in eventData
+    dff <- data.frame(generation = xn, leftchild = xc, rightchild = xc,
+                      abstime = xn, lambdainit = xn, lambdashift = xn,
+                      muinit = xn, mushift = xn, stringsAsFactors = F)
+    for (i in 1:length(coreshifts))
+    {
+      if (coreshifts[i] <= length(x$tip.label))
+      {
+        # Case for a terminal nodes
+        dset <- c(x$tip.label[coreshifts[i]], NA)
+      } else {
+        # Case for internal nodes
+
+        # Here is the issue! This is used to assign left and right children to the edge where the core-shift happens
+        # It is using the first and last tips of the extracted clade to define one left child and one right child
+        # However, this does not work all the time!!!
+
+        # tmp <- ape::extract.clade(as.phylo(x), node = coreshifts[i])
+        # dset <- tmp$tip.label[c(1, length(tmp$tip.label))]
+
+        # Fix: do not use first and last tip from extracted clades to define left and right childs!
+
+        # Get two descending nodes from the core shifts = left and right elements of the partition
+        phy <- ape::as.phylo(x)
+        children_nodes <- phy$edge[phy$edge[, 1] == coreshifts[i], 2]
+
+        # Get one representative tip for each element = left and right children
+        left_child <- get_descendant_tip_label(phy, children_nodes[1])
+        right_child <- get_descendant_tip_label(phy, children_nodes[2])
+        dset <- c(left_child, right_child)
+
+        # Sanity control: does the MRCA method used downstream in getEventData recovered the desired node from the children tips?
+        # stopifnot(ape::getMRCA(phy, dset) == coreshifts[i])
+      }
+
+      # Extract events for the given coreshift
+      tmp2 <- ff[ff$node == coreshifts[i], ]
+
+      # Record children tips
+      dff$leftchild[i] <- dset[1]
+      dff$rightchild[i] <- dset[2]
+
+      # Average location and rates across all MAP samples
+      dff$abstime[i] <- mean(tmp2$time)
+      dff$lambdainit[i] <- mean(tmp2$lam1)
+      dff$lambdashift[i] <- mean(tmp2$lam2)
+      dff$muinit[i] <- mean(tmp2$mu1)
+      dff$mushift[i] <- mean(tmp2$mu2)
+    }
+
+    # Reconstruct BAMM_object with only the mean core-shifts of the MAP configs
+
+    ## This is where the error occurs
+    best_ed <- getEventData(phy = ape::as.phylo(x), eventdata = dff)
+
+  } else if (x$type == "trait") {
+    dff <- data.frame(generation = xn, leftchild = xc, rightchild = xc,
+                      abstime = xn, betainit = xn, betashift = xn, stringsAsFactors = F)
+    for (i in 1:length(coreshifts))
+    {
+      if (coreshifts[i] <= length(x$tip.label))
+      {
+        dset <- c(x$tip.label[coreshifts[i]], NA)
+      } else {
+        ## Same issue for "trait" run
+        # tmp <- ape::extract.clade(as.phylo(x), node = coreshifts[i])
+        # dset <- tmp$tip.label[c(1, length(tmp$tip.label))]
+
+        ## Same fix
+        # Get two descending nodes from the core shifts = left and right elements of the partition
+        children_nodes <- phy$edge[phy$edge[, 1] == coreshifts[i], 2]
+
+        # Get one representative tip for each element = left and right children
+        left_child <- get_descendant_tip_label(phy, children_nodes[1])
+        right_child <- get_descendant_tip_label(phy, children_nodes[2])
+        dset <- c(left_child, right_child)
+
+        # Sanity control: does the MRCA method used downstream in getEventData recovered the desired node from the children tips?
+        # stopifnot(ape::getMRCA(phy, dset) == coreshifts[i])
+
+      }
+      tmp2 <- ff[ff$node == coreshifts[i], ]
+      dff$leftchild[i] <- dset[1]
+      dff$rightchild[i] <- dset[2]
+      dff$abstime[i] <- mean(tmp2$time)
+      dff$betainit[i] <- mean(tmp2$lam1)
+      dff$betashift[i] <- mean(tmp2$lam2)
+    }
+
+    best_ed <- getEventData(as.phylo(x), eventdata = dff,
+                            type = "trait")
+  } else {
+    stop("error in getBestShiftConfiguration; invalid type")
+  }
+  return(best_ed)
+}
+
 
 ### Internal function used to compute mean BAMM_object across a selected set of posterior samples
 
@@ -1526,8 +1730,8 @@ prepare_diversification_data <- function (BAMM_install_directory_path,
 # Source: BAMMtools::getBestShiftConfiguration()
 # Author: Dan Rabosky
 
-#' @importFrom ape as.phylo extract.clade
-#' @importFrom BAMMtools maximumShiftCredibility subsetEventData getEventData
+#' @importFrom ape as.phylo
+#' @importFrom BAMMtools subsetEventData getEventData
 
 get_mean_eventData <- function (BAMM_object, sample_indices)
 {
@@ -1557,11 +1761,28 @@ get_mean_eventData <- function (BAMM_object, sample_indices)
     # Extract most left/right descendant tips of the regime
     if (shifts_tipward_nodes_ID[i] <= length(BAMM_object$tip.label))
     {
+      # Case for a terminal nodes
       dset <- c(BAMM_object$tip.label[shifts_tipward_nodes_ID[i]], NA)
     }
     else {
-      tmp <- ape::extract.clade(as.phylo(BAMM_object), node = shifts_tipward_nodes_ID[i])
-      dset <- tmp$tip.label[c(1, length(tmp$tip.label))]
+      # Case for internal nodes
+
+      # Issue! Using the first and last tips of the extracted clade to define one left child and one right child
+      # However, this does not work all the time!!!
+      # tmp <- ape::extract.clade(ape::as.phylo(BAMM_object), node = shifts_tipward_nodes_ID[i])
+      # dset <- tmp$tip.label[c(1, length(tmp$tip.label))]
+
+      # Fix: do not use first and last tip from extracted clades to define left and right childs!
+
+      # Get two descending nodes from the core shifts = left and right elements of the partition
+      phy <- ape::as.phylo(BAMM_object)
+      children_nodes <- phy$edge[phy$edge[, 1] == shifts_tipward_nodes_ID[i], 2]
+
+      # Get one representative tip for each element = left and right children
+      left_child <- get_descendant_tip_label(phy, children_nodes[1])
+      right_child <- get_descendant_tip_label(phy, children_nodes[2])
+      dset <- c(left_child, right_child)
+
     }
     tmp2 <- ff[ff$node == shifts_tipward_nodes_ID[i], ]
     dff$leftchild[i] <- dset[1]
@@ -1574,9 +1795,24 @@ get_mean_eventData <- function (BAMM_object, sample_indices)
     dff$mushift[i] <- mean(tmp2$mu2)
   }
   # Extract under bammdata format
-  mean_BAMM_object <- BAMMtools::getEventData(ape::as.phylo(BAMM_object), eventdata = dff)
+  mean_BAMM_object <- BAMMtools::getEventData(ape::as.phylo(BAMM_object), eventdata = dff, verbose = FALSE)
 
   return(mean_BAMM_object)
 }
 
 
+### Helper function to quickly go down a tree and extract a representative tip for a given node
+
+# Author: Maël Doré
+
+get_descendant_tip_label <- function(phy, node)
+{
+  # If 'node' is an internal node, keep going
+  # Stop when 'node' is a terminal tip
+  while (node > length(phy$tip.label))
+  {
+    node <- phy$edge[match(node, phy$edge[, 1]), 2]
+  }
+
+  return(phy$tip.label[node])
+}

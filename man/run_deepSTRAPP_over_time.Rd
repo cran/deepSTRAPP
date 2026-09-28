@@ -6,20 +6,24 @@
 \usage{
 run_deepSTRAPP_over_time(
   contMap = NULL,
+  contMaps = NULL,
   densityMaps = NULL,
+  simmaps = NULL,
+  nb_simulations = NULL,
   ace = NULL,
   tip_data = NULL,
   trait_data_type,
+  keep_tip_labels = TRUE,
   BAMM_object,
+  rate_type = "net_diversification",
   time_steps = NULL,
   time_range = NULL,
   nb_time_steps = NULL,
   time_step_duration = NULL,
-  keep_tip_labels = TRUE,
-  rate_type = "net_diversification",
+  uncertainty_strategy = "paired",
+  trait_maps_vs_BAMM_samples_list = NULL,
   seed = NULL,
   nb_permutations = NULL,
-  replace_samples = FALSE,
   alpha = 0.05,
   two_tailed = TRUE,
   one_tailed_hypothesis = NULL,
@@ -31,8 +35,8 @@ run_deepSTRAPP_over_time(
   extract_trait_data_melted_df = FALSE,
   extract_diversification_data_melted_df = FALSE,
   return_STRAPP_results = FALSE,
-  return_updated_trait_data_with_Map = FALSE,
-  return_updated_BAMM_object = FALSE,
+  return_updated_Maps = FALSE,
+  return_updated_BAMM_objects = FALSE,
   verbose = TRUE,
   verbose_extended = FALSE
 )
@@ -42,30 +46,46 @@ run_deepSTRAPP_over_time(
 typically generated with \code{\link[=prepare_trait_data]{prepare_trait_data()}} or \code{\link[phytools:contMap]{phytools::contMap()}},
 that contains a phylogenetic tree and associated continuous trait mapping.
 The phylogenetic tree must be rooted and fully resolved/dichotomous,
-but it does not need to be ultrametric (it can includes fossils).}
+but it does not need to be ultrametric (it can include fossils).}
+
+\item{contMaps}{For continuous trait data. List of objects of class \code{"contMap"},
+typically generated with \code{\link[=prepare_trait_data]{prepare_trait_data()}},
+that contains multiple continuous stochastic maps that represent possible trait evolutionary histories
+conditioned on the observed trait values and model fit.}
 
 \item{densityMaps}{For categorical trait or biogeographic data. List of objects of class \code{"densityMap"},
 typically generated with \code{\link[=prepare_trait_data]{prepare_trait_data()}},
 that contains a phylogenetic tree and associated posterior probability of being in a given state/range along branches.
 Each object (i.e., \code{densityMap}) corresponds to a state/range. The phylogenetic tree must be rooted and fully resolved/dichotomous,
-but it does not need to be ultrametric (it can includes fossils).}
+but it does not need to be ultrametric (it can include fossils).}
+
+\item{simmaps}{For categorical trait or biogeographic data. List of objects of class \code{"simmap"},
+typically generated with \code{\link[=prepare_trait_data]{prepare_trait_data()}} or \code{\link[phytools:make.simmap]{phytools::make.simmap()}},
+that represent discrete character/geographic evolutionary history
+(i.e., transitions in character states/geographic ranges) mapped along branches.
+This is needed to be able to track which simulated history provided which trait data in downstream analyses
+employing the "paired" or "full" strategies to account for uncertainty in ancestral trait estimates.}
+
+\item{nb_simulations}{For categorical trait or biogeographic data. Integer. The number of stochastic maps used to simulate
+trait evolution. This is needed for the "paired" and "full" strategies to account for trait estimate uncertainty,
+if only densityMaps summarizing posterior state/range density are provided, but not the simmaps representing all evolutionary histories.}
 
 \item{ace}{(Optional) Ancestral Character Estimates (ACE) at the internal nodes.
 Obtained with \code{\link[=prepare_trait_data]{prepare_trait_data()}} as output in the \verb{$ace} slot.
 \itemize{
-\item For continuous trait data: Named numerical vector typically generated with \code{\link[phytools:fastAnc]{phytools::fastAnc()}}, \code{\link[phytools:anc.ML]{phytools::anc.ML()}}, or \code{\link[ape:ace]{ape::ace()}}.
+\item For continuous trait data: Named numeric vector typically generated with \code{\link[phytools:fastAnc]{phytools::fastAnc()}}, \code{\link[phytools:anc.ML]{phytools::anc.ML()}}, or \code{\link[ape:ace]{ape::ace()}}.
 Names are nodes_ID of the internal nodes. Values are ACE of the trait.
-\item For categorical trait or biogeographic data: Matrix that record the posterior probabilities of ancestral states/ranges.
+\item For categorical trait or biogeographic data: Matrix that records the posterior probabilities of ancestral states/ranges.
 Rows are internal nodes_ID. Columns are states/ranges. Values are posterior probabilities of each state per node.
 Needed in all cases to provide accurate estimates of trait values.
 }}
 
 \item{tip_data}{(Optional) Named vector of tip values of the trait.
 \itemize{
-\item For continuous trait data: Named numerical vector of trait values.
-\item For categorical trait or biogeographic data: Character string vector of states/ranges
-Names are nodes_ID of the internal nodes. Needed to provide accurate tip values.
-\item For biogeographic data, ranges should follow the coding scheme of BioGeoBEARS with a unique CAPITAL letter per unique areas
+\item For continuous trait data: Named numeric vector of trait values.
+\item For categorical trait or biogeographic data: Named character vector of states/ranges.
+Names must match \code{tip.label} in the phylogeny. Needed to provide accurate tip values.
+\item For biogeographic data, ranges should follow the coding scheme of BioGeoBEARS with a unique CAPITAL letter per unique area
 (ex: A, B), combined to form multi-area ranges (Ex: AB). Alternatively, you can provide tip_data as a matrix or data.frame of
 binary presence/absence in each area (coded as unique CAPITAL letter). In this case, columns are unique areas, rows are taxa,
 and values are integer (0/1) signaling absence or presence of the taxa in the area.
@@ -73,43 +93,61 @@ and values are integer (0/1) signaling absence or presence of the taxa in the ar
 
 \item{trait_data_type}{Character string. Specify the type of trait data. Must be one of "continuous", "categorical", "biogeographic".}
 
+\item{keep_tip_labels}{Logical. Specify whether terminal branches with a single descendant tip
+must retain their initial \code{tip.label} on the updated phylogeny. Default is \code{TRUE}.}
+
 \item{BAMM_object}{Object of class \code{"bammdata"}, typically generated with \code{\link[=prepare_diversification_data]{prepare_diversification_data()}},
 that contains a phylogenetic tree and associated diversification rate mapping across selected posterior samples.
-The phylogenetic tree must the same as the one associated with the \code{contMap}, \code{ace} and \code{tip_data}.}
+The phylogenetic tree must be the same as the one associated with the \code{contMap}, \code{ace} and \code{tip_data}.}
 
-\item{time_steps}{Numerical vector. Time steps at which the STRAPP tests should be carried out. If \code{NULL} (the default),
+\item{rate_type}{A character string specifying the type of diversification rates to use. Must be one of 'speciation', 'extinction' or 'net_diversification' (default).}
+
+\item{time_steps}{Numeric vector. Time steps at which the STRAPP tests should be carried out. If \code{NULL} (the default),
 \code{time_steps} will be generated from a combination of two arguments among \code{time_range}, \code{nb_time_steps}, and/or \code{time_step_duration}.}
 
-\item{time_range}{Vector of two numerical values. Time boundaries within with the \code{time_steps} must be defined if not provided.
+\item{time_range}{Numeric vector of length 2. Time boundaries within which the \code{time_steps} must be defined if not provided.
 If \code{NULL} (the default), and \code{time_range} is needed to generate the \code{time_steps}, the depth of the tree is used by default: \code{c(0, root_age)}.
 However, no time step will be generated for the 'root_age'.}
 
-\item{nb_time_steps, time_step_duration}{Numerical. Number of time steps and duration of each time step used to generate \code{time_steps} if not provided.
+\item{nb_time_steps, time_step_duration}{Numeric. Number of time steps and duration of each time step used to generate \code{time_steps} if not provided.
 You must provide at least one of those two arguments to be able to generate \code{time_steps}.}
 
-\item{keep_tip_labels}{Logical. Specify whether terminal branches with a single descendant tip
-must retained their initial \code{tip.label} on the updated phylogeny. Default is \code{TRUE}.}
+\item{uncertainty_strategy}{Character string. To select the strategy used to account for uncertainty in estimates.
+\itemize{
+\item \code{"rates_only"}: Only accounts for diversification-rate uncertainty across BAMM posterior samples. Uses ML estimates for continuous traits
+and the most frequent state/range observed across stochastic maps for categorical and biogeographic data.
+\item \code{"paired"}: Default option. Accounts for both diversification-rate and ancestral trait/range reconstruction uncertainty by pairing BAMM posterior samples with stochastic maps.
+When the number of BAMM samples and stochastic maps differ, random pairing with replacement from the smaller set is used
+so that all posterior samples and stochastic maps contribute to the analysis.
+\item \code{"full"}: Exhaustive option that accounts for trait/range- and rate- uncertainty by crossing all BAMM posterior samples with all stochastic maps.
+Accounts for both diversification-rate and ancestral reconstruction uncertainty by evaluating every combination of BAMM posterior samples and stochastic maps.
+WARNING: This exhaustive approach can substantially increase computation time and memory requirements and is therefore recommended only for moderate-sized analyses.
+}}
 
-\item{rate_type}{A character string specifying the type of diversification rates to use. Must be one of 'speciation', 'extinction' or 'net_diversification' (default).}
+\item{trait_maps_vs_BAMM_samples_list}{(Optional) List of two elements manually providing the names to associate stochastic maps (\verb{$trait_map_ID})
+with BAMM samples (\verb{$BAMM_posterior_sample_ID}). This is typically used to ensure the same stochastic maps and BAMM samples are used to test across multiple time-steps.
+Values are the names of the objects such as "Map_X" and "BAMM_X". Default = \code{NULL}.
+* For uncertainty_strategy == 'rates_only', the \verb{$trait_map_ID} must be "Map_ML" as only the ML estimates of trait values/states/ranges are used.
+* For uncertainty_strategy == 'paired', each pair of stochastic map and BAMM sample will be used once.
+* For uncertainty_strategy == 'full', all stochastic maps will be matched with all BAMM samples.
+Those may partly differ from the actual maps and BAMM samples used for the tests as recorded in \verb{$STRAPP_results_over_time[[X]]$perm_data_df}
+because invalid maps with not enough states/ranges are discarded at each time-step.}
 
 \item{seed}{Integer. Set the seed to ensure reproducibility. Default is \code{NULL} (a random seed is used).}
 
 \item{nb_permutations}{Integer. To select the number of random permutations to perform during the tests.
 If NULL (default), all posterior samples will be used once.}
 
-\item{replace_samples}{Logical. To specify whether to allow 'replacement' (i.e., multiple use) of a posterior sample
-when drawing samples used to carry out the STRAPP test. Default is \code{FALSE}.}
-
-\item{alpha}{Numerical. Significance level to use to compute the \code{estimate} corresponding to the values of the test statistic used to assess significance of the test.
+\item{alpha}{Numeric. Significance level to use to compute the \code{estimate} corresponding to the values of the test statistic used to assess significance of the test.
 This does NOT affect p-values. Default is \code{0.05}.}
 
 \item{two_tailed}{Logical. To define the type of tests. If \code{TRUE} (default), tests for correlations/differences in rates will be carried out with a null hypothesis
-that rates are not correlated with trait values (continuous data) or equals between trait states (categorical and biogeographic data).
+that rates are not correlated with trait values (continuous data) or equal between trait states (categorical and biogeographic data).
 If \code{FALSE}, one-tailed tests are carried out.
 \itemize{
 \item For continuous data, it involves defining a \code{one_tailed_hypothesis} testing for either a "positive" or "negative" correlation under the alternative hypothesis.
 \item For binary data (two states), it involves defining a \code{one_tailed_hypothesis} indicating which states have higher rates under the alternative hypothesis.
-\item For multinominal data (more than two states), it defines the type of post hoc pairwise tests to carry out between pairs of states.
+\item For multinomial data (more than two states), it defines the type of post hoc pairwise tests to carry out between pairs of states.
 If \code{posthoc_pairwise_tests = TRUE}, all two-tailed (if \code{two_tailed = TRUE}) or one-tailed (if \code{two_tailed = FALSE}) tests are automatically carried out.
 }}
 
@@ -117,24 +155,24 @@ If \code{posthoc_pairwise_tests = TRUE}, all two-tailed (if \code{two_tailed = T
 For continuous data, it is either "negative" or "positive" correlation.
 For binary data, it lists the trait states with states ordered in increasing rates under the alternative hypothesis, separated by a greater-than such as c('A > B').}
 
-\item{posthoc_pairwise_tests}{Logical. Only for multinominal data (with more than two states). If \code{TRUE}, all possible post hoc pairwise (Dunn) tests
+\item{posthoc_pairwise_tests}{Logical. Only for multinomial data (with more than two states). If \code{TRUE}, all possible post hoc pairwise (Dunn) tests
 will be computed across all pairs of states. This is a way to detect which pairs of states have significant differences in rates
 if the overall test (Kruskal-Wallis) is significant. Default is \code{FALSE}.}
 
-\item{p.adjust_method}{A character string. Only for multinominal data (with more than two states). It specifies the type of correction to apply to the p-values
+\item{p.adjust_method}{A character string. Only for multinomial data (with more than two states). It specifies the type of correction to apply to the p-values
 in the post hoc pairwise tests to account for multiple comparisons. See \code{\link[stats:p.adjust]{stats::p.adjust()}} for the available methods. Default is \code{none}.}
 
 \item{return_perm_data}{Logical. Whether to return the stats data computed from the posterior samples for observed and permuted data in the output.
 This is needed to plot the histograms of the null distribution used to assess significance of the tests with \code{\link[=plot_histogram_STRAPP_test_for_focal_time]{plot_histogram_STRAPP_test_for_focal_time()}}.
 (for a single \code{focal_time}) and \code{\link[=plot_histograms_STRAPP_tests_over_time]{plot_histograms_STRAPP_tests_over_time()}} (for multiple \code{time_steps}). Default is \code{FALSE}.}
 
-\item{nthreads}{Integer. Number of threads to use for paralleled computing of the STRAPP tests across the permutations.
+\item{nthreads}{Integer. Number of threads to use for parallel computing of the STRAPP tests across the permutations.
 The R package \code{parallel} must be loaded for \code{nthreads > 1}. Default is \code{1}.}
 
 \item{print_hypothesis}{Logical. Whether to print information on what test is carried out, detailing the null and alternative hypotheses,
-and what significant level is used to rejected or not the null hypothesis. Default is \code{TRUE}.}
+what significance level is used to reject or not the null hypothesis, and how uncertainty in trait estimates is handled. Default is \code{TRUE}.}
 
-\item{extract_trait_data_melted_df}{Logical. Specify whether trait data must be extracted from the \code{updated_contMap}/\code{updated_densityMaps} objects at each time step
+\item{extract_trait_data_melted_df}{Logical. Specify whether trait data must be extracted from the mapped phylogenies at each time step
 and returned in a melted data.frame. Default is \code{FALSE}.}
 
 \item{extract_diversification_data_melted_df}{Logical. Specify whether diversification data (regimes ID and tip rates) must be extracted from the \code{updated_BAMM_object}
@@ -143,33 +181,44 @@ at each time step and returned in a melted data.frame. Default is \code{FALSE}.}
 \item{return_STRAPP_results}{Logical. Specify whether the \code{STRAPP_results} objects summarizing the results of the STRAPP tests carried out at each time step
 should be returned among the outputs in addition to the \verb{$pvalues_summary_df} already providing test stat estimates and p-values obtained across all \code{time_steps}.}
 
-\item{return_updated_trait_data_with_Map}{Logical. Specify whether the \code{trait_data} extracted
-for the given \code{focal_time} and the updated version of mapped phylogeny (\code{contMap}/\code{densityMaps}) provided as input
-should be returned among the outputs. The updated \code{contMap}/\code{densityMaps} consists in cutting off branches and mapping
-that are younger than the \code{focal_time}. Default is \code{FALSE}.}
+\item{return_updated_Maps}{Logical. Specify whether the updated versions of the mapped phylogenies (\code{contMap(s)}/\code{densityMaps}/\code{simmaps}),
+should be returned among the outputs. The update of the \code{contMap(s)}/\code{densityMaps}/\code{simmaps} consists of cutting off branches and mapping
+that are younger than the \code{time_steps} used to perform the tests. Default is \code{FALSE}.}
 
-\item{return_updated_BAMM_object}{Logical. Specify whether the \code{updated_BAMM_object} with phylogeny and
-mapped diversification rates cut-off at the \code{focal_time} should be returned among the outputs.}
+\item{return_updated_BAMM_objects}{Logical. Specify whether the \code{updated_BAMM_objects} with phylogeny and
+mapped diversification rates cut-off at the \code{time_steps} used to perform the tests should be returned among the outputs.}
 
 \item{verbose}{Logical. Should progression per \code{time_steps} be displayed? Default is \code{TRUE}.}
 
-\item{verbose_extended}{Should progression per \code{time_steps} AND within each deepSTRAPP workflow de displayed?
+\item{verbose_extended}{Should progression per \code{time_steps} AND within each deepSTRAPP workflow be displayed?
 In addition to printing progress along \code{time_steps}, a message will be printed at each step of the deepSTRAPP workflow,
-and for every batch of 100 BAMM posterior samples whose rates are regimes are updated. If \code{extract_diversification_data_melted_df = TRUE},
-a message for will also be printed when rates are extracted. Default is \code{FALSE}.}
+and for every batch of 100 BAMM posterior samples whose rates and regimes are updated. If \code{extract_diversification_data_melted_df = TRUE},
+a message will also be printed when rates are extracted. Default is \code{FALSE}.}
 }
 \value{
 The function returns a list with at least five elements.
 \itemize{
 \item \verb{$pvalues_summary_df} Data.frame with three columns providing test stat \verb{$estimate} and \verb{$p_value} obtained for each time step (i.e., \verb{$focal_time}),
 that can be passed down to \code{\link[=plot_STRAPP_pvalues_over_time]{plot_STRAPP_pvalues_over_time()}} to generate a plot showing the evolution of the test results across time.
-\item \verb{$time_steps} Numerical vector. Time steps at which the STRAPP tests were carried out in the same order as the objects returned in the output lists.
+\item \verb{$time_steps} Numeric vector. Time steps at which the STRAPP tests were carried out in the same order as the objects returned in the output lists.
 \item \verb{$trait_data_type} Character string. Specify the type of trait data. Possible values are: "continuous", "categorical", "biogeographic".
-\item \verb{$trait_data_type_for_stats} Character string. The type of trait data used to select statistical method. One of 'continuous', 'binary', or 'multinominal'.
+\item \verb{$trait_data_type_for_stats} Character string. The type of trait data used to select statistical method. One of 'continuous', 'binary', or 'multinomial'.
+The method is fixed once for the whole run, based on the number of states/ranges found in the complete trait mapping,
+so that the same test is used at every time step for consistency across p-values.
+\item \verb{$states_observed_overall} (Only for categorical and biogeographic data) Character string vector of all states/ranges found in the complete trait mapping.
+This is what the statistical method \code{trait_data_type_for_stats} is based on, and it can be larger than the set of states/ranges found at any given time step.
+\item \verb{$states_observed_per_time_steps} (Only for categorical and biogeographic data) List of character string vectors, one per time step and named after it.
+States/ranges found at each time step. There can be steps with fewer states/ranges than others, which may affect the interpretation of the p-values obtained for these steps.
+\item \verb{$nb_states_observed_per_time_steps} (Only for categorical and biogeographic data) Named numeric vector. Number of states/ranges found at each time step.
+Recorded so that the interpretation of the p-values obtained from steps with fewer states/ranges can be adjusted if needed.
+For cases with only one state/range, no test could be computed, and they should be matching a \code{NA} in \verb{$pvalues_summary_df}.
 \item \verb{$rate_type} Character string. The type of diversification rates used in the tests: 'speciation', 'extinction' or 'net_diversification'.
+\item \verb{$uncertainty_strategy} Character string. The strategy used to account for uncertainty in estimates. One of 'rates_only', 'paired', or 'full'.
+\item \verb{$trait_maps_vs_BAMM_samples_list} List of two elements recording the stochastic maps (\verb{$trait_map_ID}) and BAMM samples (\verb{$BAMM_posterior_sample_ID}) chosen for testing across time-steps.
+Those may partly differ from the actual maps and BAMM samples used for the tests as recorded in \verb{$STRAPP_results_over_time[[X]]$perm_data_df} because invalid maps with not enough states/ranges are discarded.
 }
 
-Optional summary df for multinominal data, if \code{posthoc_pairwise_tests = TRUE}:
+Optional summary df for multinomial data, if \code{posthoc_pairwise_tests = TRUE}:
 \itemize{
 \item \verb{$pvalues_summary_df_for_posthoc_pairwise_tests} Data.frame with four or five columns providing test stat \verb{$estimate}, \verb{$p_value}, and \verb{$p_value_adjusted}
 (if \code{p.adjust_method} used is not "none") for each \verb{$pair} of states involved in post hoc Dunn's tests obtained for each time step (i.e., \verb{$focal_time}).
@@ -178,13 +227,13 @@ This data.frame can be passed down to \code{\link[=plot_STRAPP_pvalues_over_time
 
 Optional melted data.frames:
 \itemize{
-\item \verb{$trait_data_df_over_time} Data.frame with three columns providing \verb{$trait_value} associated with each \verb{$tip_ID} found along each time step (i.e., \verb{$focal_time}).
-Set \code{extract_trait_data_melted_df = TRUE} to include it in the output.
+\item \verb{$trait_data_df_over_time} Data.frame with five columns providing \verb{$trait_value} associated with each \verb{$tip_ID} found along each time step (i.e., \verb{$focal_time})
+across all stochastic maps (\verb{$Map_ID}). Set \code{extract_trait_data_melted_df = TRUE} to include it in the output.
 \item \verb{$diversification_data_df_over_time} Data.frame with six columns providing diversification regimes (\verb{$regime_ID}) and \verb{$rates} sorted by \verb{$rate_type} along tips (\verb{$tip_ID})
 found across all posterior samples (\verb{$BAMM_sample_ID}) over each time step (i.e., \verb{$focal_time}).
 Set \code{extract_diversification_data_melted_df = TRUE} to include it in the output.
 \item Those data.frames can be passed down to \code{\link[=plot_rates_through_time]{plot_rates_through_time()}} to generate a plot showing
-the evolution diversification rates across trait values over time.
+the evolution of diversification rates across trait values over time.
 }
 
 Optional objects generated for each time step (i.e., \code{focal_time}) and ordered as in \verb{$time_steps}:
@@ -192,14 +241,14 @@ Optional objects generated for each time step (i.e., \code{focal_time}) and orde
 \item \verb{$STRAPP_results_over_time} List of objects summarizing the results of the STRAPP tests
 See \code{\link[=compute_STRAPP_test_for_focal_time]{compute_STRAPP_test_for_focal_time()}} for a detailed description of the elements in each object.
 Set \code{return_STRAPP_results = TRUE} to include it in the output.
-Combined with \code{return_perm_data = TRUE}, it allows to plot the histograms of the null distributions
+Combined with \code{return_perm_data = TRUE}, it allows you to plot the histograms of the null distributions
 used to assess significance of the tests with \code{\link[=plot_histogram_STRAPP_test_for_focal_time]{plot_histogram_STRAPP_test_for_focal_time()}}.
 (for a single \code{focal_time}) and \code{\link[=plot_histograms_STRAPP_tests_over_time]{plot_histograms_STRAPP_tests_over_time()}} (for multiple \code{time_steps}).
-\item \verb{$updated_trait_data_with_Map_over_time} List of objects containing trait data and updated \code{contMap}/\code{densityMaps}.
-Updated \code{contMap}/\code{densityMaps} can be respectively plotted with \code{\link[=plot_contMap]{plot_contMap()}} or \code{\link[=plot_densityMaps_overlay]{plot_densityMaps_overlay()}},
+\item \verb{$updated_Maps_over_time} List of objects containing updated \code{contMap(s)}/\code{densityMaps}/\code{simmaps}.
+The updated mapped phylogenies can be plotted with \code{\link[=plot_contMap]{plot_contMap()}} or \code{\link[=plot_densityMaps_overlay]{plot_densityMaps_overlay()}},
 to display a phylogeny mapped with trait values with branches cut at each \code{focal_time}.
 \item \verb{$updated_BAMM_objects_over_time} List of objects containing rates and regimes ID mapped on phylogeny.
-Updated \code{BAMM_object} can be plotted with \code{\link[=plot_BAMM_rates]{plot_BAMM_rates()}} to display a phylogeny mapped with
+Updated \code{BAMM_objects} can be plotted with \code{\link[=plot_BAMM_rates]{plot_BAMM_rates()}} to display a phylogeny mapped with
 diversification rates with branches cut at each \code{focal_time}.
 }
 }
@@ -230,7 +279,7 @@ The deepSTRAPP workflow is described step by step in the \code{\link[=run_deepST
 
 Its main output is the \verb{$pvalues_summary_df}: a data.frame providing test stat estimates and p-values obtained across all \code{time_steps},
 that can be passed down to \code{\link[=plot_STRAPP_pvalues_over_time]{plot_STRAPP_pvalues_over_time()}} to generate a plot showing the evolution of the test results across time.
-If using multinominal data (with more than two states) and \code{posthoc_pairwise_tests = TRUE}, the output will also contain
+If using multinomial data (with more than two states) and \code{posthoc_pairwise_tests = TRUE}, the output will also contain
 a data.frame providing test stat estimates and p-values for post hoc pairwise tests in \verb{$pvalues_summary_df_for_posthoc_pairwise_tests}.
 
 The function offers options to generate summary data.frames of the data extracted across \code{time_steps}:
@@ -240,31 +289,33 @@ is provided in \verb{$trait_data_df_over_time}.
 \item If \code{extract_diversification_data_melted_df = TRUE}, a data.frame of diversification data (regimes ID and tip rates)
 found along branches at each time step is provided in \verb{$diversification_data_df_over_time}.
 \item Those data.frames can be passed down to \code{\link[=plot_rates_through_time]{plot_rates_through_time()}} to generate a plot showing
-the evolution diversification rates across trait values over time.
+the evolution of diversification rates across trait values over time.
 }
 
-The function also allows to keep records of the intermediate objects generated during the STRAPP workflow:
+The function also allows you to keep records of the intermediate objects generated during the STRAPP workflow:
 \itemize{
 \item If \code{return_STRAPP_results = TRUE}, a list of STRAPP test outputs is provided in \verb{$STRAPP_results_over_time}.
-Combined with \code{return_perm_data = TRUE}, it allows to plot the histograms of the null distributions
+Combined with \code{return_perm_data = TRUE}, it allows you to plot the histograms of the null distributions
 used to assess significance of the tests with \code{\link[=plot_histogram_STRAPP_test_for_focal_time]{plot_histogram_STRAPP_test_for_focal_time()}}.
 (for a single \code{focal_time}) and \code{\link[=plot_histograms_STRAPP_tests_over_time]{plot_histograms_STRAPP_tests_over_time()}} (for multiple \code{time_steps}).
-\item If \code{return_updated_trait_data_with_Map = TRUE}, a list of objects containing trait data and updated \code{contMap} or \code{densityMaps}
-is provided in \verb{$updated_trait_data_with_Map_over_time}. Updated \code{contMap}/\code{densityMaps} can be respectively plotted with \code{\link[=plot_contMap]{plot_contMap()}}
-or \code{\link[=plot_densityMaps_overlay]{plot_densityMaps_overlay()}}, to display a phylogeny mapped with trait values with branches cut at each \code{focal_time}.
-\item If \code{return_updated_BAMM_object = TRUE}, a list of updated \code{BAMM_object} of class \code{"bammdata"} that contains rates and regimes ID
-found at each \code{focal_time}. Updated \code{BAMM_object} can be plotted with \code{\link[=plot_BAMM_rates]{plot_BAMM_rates()}} to display
+\item If \code{return_updated_Maps = TRUE}, a list of objects containing the updated \code{contMap(s)}/\code{densityMaps}/\code{simmaps} provided as inputs
+is provided in \verb{$updated_Maps_over_time}.
+The updated mapped phylogenies can be visualized with \code{\link[=plot_contMap]{plot_contMap()}} or \code{\link[=plot_densityMaps_overlay]{plot_densityMaps_overlay()}},
+to display a phylogeny mapped with trait values/states/ranges with branches cut at each \code{focal_time}.
+\item If \code{return_updated_BAMM_objects = TRUE}, a list of updated \code{BAMM_objects} of class \code{"bammdata"} that contains rates and regimes ID
+found at each \code{focal_time} is provided in \verb{$updated_BAMM_objects_over_time}.
+Updated \code{BAMM_objects} can be plotted with \code{\link[=plot_BAMM_rates]{plot_BAMM_rates()}} to display
 a phylogeny mapped with diversification rates with branches cut at each \code{focal_time}.
 }
 }
 \examples{
 if (deepSTRAPP::is_dev_version())
 {
- # ----- Example 1: Continuous trait ----- #
+# ----- Example 1: Continuous trait ----- #
  ## Load data
 
  # Load trait df
- data(Ponerinae_trait_tip_data, package = "deepSTRAPP")
+data(Ponerinae_trait_tip_data, package = "deepSTRAPP")
  # Load phylogeny with old calibration
  data(Ponerinae_tree_old_calib, package = "deepSTRAPP")
 
@@ -283,18 +334,19 @@ if (deepSTRAPP::is_dev_version())
  # Select a color scheme from lowest to highest values
  color_scale = c("darkgreen", "limegreen", "orange", "red")
 
- # Get Ancestral Character Estimates based on a Brownian Motion model
- # To obtain values at internal nodes
- Ponerinae_ACE <- phytools::fastAnc(tree = Ponerinae_tree_old_calib, x = Ponerinae_cont_tip_data)
-
  \donttest{ # (May take several minutes to run)
- # Run a Stochastic Mapping based on a Brownian Motion model
- # to interpolate values along branches and obtain a "contMap" object
- Ponerinae_contMap <- phytools::contMap(Ponerinae_tree, x = Ponerinae_cont_tip_data,
-                                        res = 100, # Number of time steps
-                                        plot = FALSE)
- # Plot contMap = stochastic mapping of continuous trait
- plot_contMap(contMap = Ponerinae_contMap,
+ # Map trait evolution across multiple simulations (i.e., continuous stochastic maps)
+ Ponerinae_cont_data_old_calib <- prepare_trait_data(
+     tip_data = Ponerinae_cont_tip_data,
+     trait_data_type = "continuous",
+     phylo = Ponerinae_tree_old_calib,
+     seed = 1234,
+     evolutionary_models = "BM",
+     plot_map = FALSE,
+     verbose = TRUE)
+
+ # Plot contMap = ML estimates of continuous trait evolution
+ plot_contMap(contMap = Ponerinae_cont_data_old_calib$contMap,
               color_scale = color_scale)
 
  ## Set for time steps of 5 My. Will generate deepSTRAPP workflows for 0 to 40 Mya.
@@ -304,59 +356,66 @@ if (deepSTRAPP::is_dev_version())
 
  ## Run deepSTRAPP on net diversification rates
  Ponerinae_deepSTRAPP_cont_old_calib_0_40 <- run_deepSTRAPP_over_time(
-    contMap = Ponerinae_contMap,
-    ace = Ponerinae_ACE,
+    contMap = Ponerinae_cont_data_old_calib$contMap, # Provide ML estimates as a contMap
+    ace = Ponerinae_cont_data_old_calib$ace,
     tip_data = Ponerinae_cont_tip_data,
     trait_data_type = "continuous",
     BAMM_object = Ponerinae_BAMM_object_old_calib,
     # nb_time_steps = nb_time_steps,
     time_range = time_range,
     time_step_duration = time_step_duration,
+    uncertainty_strategy = "rates_only",
+    rate_type = "net_diversification",
     return_perm_data = TRUE,
     extract_trait_data_melted_df = TRUE,
     extract_diversification_data_melted_df = TRUE,
     return_STRAPP_results = TRUE,
-    return_updated_trait_data_with_Map = TRUE,
-    return_updated_BAMM_object = TRUE,
+    return_updated_Maps = TRUE,
+    return_updated_BAMM_objects = TRUE,
     verbose = TRUE,
     verbose_extended = TRUE) }
 
- ## Load directly trait data output
- data(Ponerinae_deepSTRAPP_cont_old_calib_0_40, package = "deepSTRAPP")
+ ## Load directly deepSTRAPP output
+ Ponerinae_deepSTRAPP_cont_old_calib_0_40 <- readRDS(system.file("extdata",
+     "Ponerinae_deepSTRAPP_cont_old_calib_0_40.rds", package = "deepSTRAPP"))
  ## This dataset is only available in development versions installed from GitHub.
  # It is not available in CRAN versions.
- # Use remotes::install_github(repo = "MaelDore/deepSTRAPP") to get the latest development version.
+# Use remotes::install_github(repo = "MaelDore/deepSTRAPP") to get the latest development version.
 
  ## Explore output
- str(Ponerinae_deepSTRAPP_cont_old_calib_0_40, max.level = 1)
+str(Ponerinae_deepSTRAPP_cont_old_calib_0_40, max.level = 1)
+ deepSTRAPP_outputs <- Ponerinae_deepSTRAPP_cont_old_calib_0_40
 
  # Display test summary
  # Can be passed down to [deepSTRAPP::plot_STRAPP_pvalues_over_time()] to generate a plot
  # showing the evolution of the test results across time.
- Ponerinae_deepSTRAPP_cont_old_calib_0_40$pvalues_summary_df
+ deepSTRAPP_outputs$pvalues_summary_df
 
  # Access trait data in a melted data.frame
- head(Ponerinae_deepSTRAPP_cont_old_calib_0_40$trait_data_df_over_time)
+ head(deepSTRAPP_outputs$trait_data_df_over_time)
+ # Trait data includes only the ML estimates
+ table(deepSTRAPP_outputs$trait_data_df_over_time$Map_ID)
 
  # Access the diversification data in a melted data.frame
- head(Ponerinae_deepSTRAPP_cont_old_calib_0_40$diversification_data_df_over_time)
+ head(deepSTRAPP_outputs$diversification_data_df_over_time)
+ # Diversification data includes 1000 BAMM posteriors
+ table(deepSTRAPP_outputs$diversification_data_df$BAMM_sample_ID)
 
- # Access deepSTRAPP results
- str(Ponerinae_deepSTRAPP_cont_old_calib_0_40$STRAPP_results, max.level = 2)
+ # Access deepSTRAPP results ordered by time-steps
+ str(deepSTRAPP_outputs$STRAPP_results, max.level = 2)
 
  ## Visualize updated phylogenies
 
  \donttest{ # (May take time to plot)
  # Plot updated contMap for time step n°2
- deepSTRAPP_outputs <- Ponerinae_deepSTRAPP_cont_old_calib_0_40
- contMap_step2 <- deepSTRAPP_outputs$updated_trait_data_with_Map_over_time[[2]]
- plot_contMap(contMap_step2$contMap, ftype = "off")
+ contMap_step2 <- deepSTRAPP_outputs$updated_Maps_over_time[[2]]$contMap
+ plot_contMap(contMap_step2, ftype = "off", color_scale = color_scale)
 
  # Plot diversification rates on updated phylogeny for time step n°2
  BAMM_object_step2 <- deepSTRAPP_outputs$updated_BAMM_objects_over_time[[2]]
  plot_BAMM_rates(BAMM_object = BAMM_object_step2,
-    legend = TRUE, labels = FALSE,
-    colorbreaks = BAMM_object_step2$initial_colorbreaks$net_diversification) }
+   legend = TRUE, labels = FALSE,
+   colorbreaks = BAMM_object_step2$initial_colorbreaks$net_diversification) }
 
  ## Visualize test results
 
@@ -364,17 +423,18 @@ if (deepSTRAPP::is_dev_version())
  # Plot p-values of Spearman tests across all time-steps
  plot_STRAPP_pvalues_over_time(
     deepSTRAPP_outputs = Ponerinae_deepSTRAPP_cont_old_calib_0_40,
-    alpha = 0.10)
+    alpha = 0.05)
 
  # Plot evolution of mean rates through time
- plot_rates_through_time(deepSTRAPP_outputs = Ponerinae_deepSTRAPP_cont_old_calib_0_40)
+ plot_rates_through_time(deepSTRAPP_outputs = Ponerinae_deepSTRAPP_cont_old_calib_0_40,
+    plot_CI = TRUE)
 
  # Plot rates vs. trait values across branches for time step = 10 My
  plot_rates_vs_trait_data_for_focal_time(
     deepSTRAPP_outputs = Ponerinae_deepSTRAPP_cont_old_calib_0_40,
     focal_time = 10)
 
- # Plot histogram of Spearman test stats for time step = 10 My
+# Plot histogram of Spearman test stats for time step = 10 My
  plot_histogram_STRAPP_test_for_focal_time(
     deepSTRAPP_outputs = Ponerinae_deepSTRAPP_cont_old_calib_0_40,
     focal_time = 10)
@@ -386,7 +446,7 @@ if (deepSTRAPP::is_dev_version())
 
  # ----- Example 2: Categorical trait ----- #
 
- ## Load data
+## Load data
 
  # Load trait df
  data(Ponerinae_trait_tip_data, package = "deepSTRAPP")
@@ -417,8 +477,9 @@ if (deepSTRAPP::is_dev_version())
     phylo = Ponerinae_tree_old_calib,
     trait_data_type = "categorical",
     colors_per_levels = colors_per_states,
-    evolutionary_models = "ARD",
-    nb_simulations = 100,
+    evolutionary_models = "ER", # Use default ER model
+    nb_simulations = 100, # Reduce number of simulations to save time
+    seed = 1234, # Set seed for reproducibility
     return_best_model_fit = TRUE,
     return_model_selection_df = TRUE,
     plot_map = FALSE) }
@@ -426,7 +487,7 @@ if (deepSTRAPP::is_dev_version())
   # Load directly trait data output
  data(Ponerinae_cat_3lvl_data_old_calib, package = "deepSTRAPP")
 
- ## Set for time steps of 5 My. Will generate deepSTRAPP workflows for 0 to 40 Mya.
+## Set for time steps of 5 My. Will generate deepSTRAPP workflows for 0 to 40 Mya.
  # nb_time_steps <- 5
  time_step_duration <- 5
  time_range <- c(0, 40)
@@ -435,6 +496,8 @@ if (deepSTRAPP::is_dev_version())
  ## Run deepSTRAPP on net diversification rates across time-steps.
  Ponerinae_deepSTRAPP_cat_3lvl_old_calib_0_40 <- run_deepSTRAPP_over_time(
     densityMaps = Ponerinae_cat_3lvl_data_old_calib$densityMaps,
+    # Inform the nb of simulations to reconstruct state distribution across stochastic maps
+    nb_simulations = 100,
     ace = Ponerinae_cat_3lvl_data_old_calib$ace,
     tip_data = Ponerinae_cat_3lvl_tip_data,
     trait_data_type = "categorical",
@@ -442,6 +505,7 @@ if (deepSTRAPP::is_dev_version())
     # nb_time_steps = nb_time_steps,
     time_range = time_range,
     time_step_duration = time_step_duration,
+    uncertainty_strategy = "paired",
     rate_type = "net_diversification",
     seed = 1234,
     alpha = 0.10, # Select a generous level of significance for the sake of the example
@@ -450,13 +514,14 @@ if (deepSTRAPP::is_dev_version())
     extract_trait_data_melted_df = TRUE,
     extract_diversification_data_melted_df = TRUE,
     return_STRAPP_results = TRUE,
-    return_updated_trait_data_with_Map = TRUE,
-    return_updated_BAMM_object = TRUE,
+    return_updated_Maps = TRUE,
+    return_updated_BAMM_objects = TRUE,
     verbose = TRUE,
     verbose_extended = TRUE) }
 
  ## Load directly deepSTRAPP output
- data(Ponerinae_deepSTRAPP_cat_3lvl_old_calib_0_40, package = "deepSTRAPP")
+ Ponerinae_deepSTRAPP_cat_3lvl_old_calib_0_40 <- readRDS(system.file("extdata",
+     "Ponerinae_deepSTRAPP_cat_3lvl_old_calib_0_40.rds", package = "deepSTRAPP"))
  deepSTRAPP_outputs <- Ponerinae_deepSTRAPP_cat_3lvl_old_calib_0_40
  ## This dataset is only available in development versions installed from GitHub.
  # It is not available in CRAN versions.
@@ -474,25 +539,31 @@ if (deepSTRAPP::is_dev_version())
 
  # Access trait data in a melted data.frame
  head(deepSTRAPP_outputs$trait_data_df_over_time)
+ # Trait data were extracted from densityMaps recording only frequency of states.
+ # Thus, trait states have been distributed accordingly across 100 'Dummy_maps'
+ # to reproduce the recorded frequencies.
+ table(deepSTRAPP_outputs$trait_data_df_over_time$Map_ID)
 
  # Access the diversification data in a melted data.frame
  head(deepSTRAPP_outputs$diversification_data_df_over_time)
+ # Diversification data includes 1000 BAMM posteriors
+ table(deepSTRAPP_outputs$diversification_data_df_over_time$BAMM_sample_ID)
 
- # Access details of deepSTRAPP results
+ # Access details of deepSTRAPP results across time-steps
  str(deepSTRAPP_outputs$STRAPP_results, max.level = 2)
 
  ## Visualize updated phylogenies
 
  \donttest{ # (May take time to plot)
  # Plot updated densityMaps for time step n°2 = 10My
- densityMaps_10My <- deepSTRAPP_outputs$updated_trait_data_with_Map_over_time[[2]]
- plot_densityMaps_overlay(densityMaps_10My$densityMaps)
+ densityMaps_10My <- deepSTRAPP_outputs$updated_Maps_over_time[[2]]
+ plot_densityMaps_overlay(densityMaps_10My$densityMaps, colors_per_levels = colors_per_states)
 
  # Plot diversification rates on updated phylogeny for time step n°2
  BAMM_object_10My <- deepSTRAPP_outputs$updated_BAMM_objects_over_time[[2]]
  plot_BAMM_rates(BAMM_object = BAMM_object_10My,
     legend = TRUE, labels = FALSE,
-    colorbreaks = BAMM_object_10My$initial_colorbreaks$net_diversification) }
+   colorbreaks = BAMM_object_10My$initial_colorbreaks$net_diversification) }
 
  ## Visualize test results
 
@@ -500,7 +571,7 @@ if (deepSTRAPP::is_dev_version())
  # Plot p-values of overall Kruskal-Wallis test across all time-steps
  plot_STRAPP_pvalues_over_time(
     deepSTRAPP_outputs = deepSTRAPP_outputs,
-    alpha = 0.10)
+   alpha = 0.10)
 
  # Plot p-values of post hoc pairwise Dunn's tests between pairs of tests across all time-steps
  plot_STRAPP_pvalues_over_time(
@@ -510,7 +581,7 @@ if (deepSTRAPP::is_dev_version())
 
  # Plot evolution of mean rates through time
  plot_rates_through_time(deepSTRAPP_outputs = deepSTRAPP_outputs,
-    colors_per_levels = colors_per_states)
+    colors_per_levels = colors_per_states, plot_CI = TRUE)
 
  # Plot rates vs. trait values across branches for time step n°2 = 10 My
  plot_rates_vs_trait_data_for_focal_time(
@@ -535,9 +606,9 @@ if (deepSTRAPP::is_dev_version())
     deepSTRAPP_outputs = deepSTRAPP_outputs,
     plot_posthoc_tests = TRUE) }
 
- # ----- Example 3: Biogeographic ranges ----- #
+# ----- Example 3: Biogeographic ranges ----- #
 
- ## Load data
+## Load data
 
  # Load phylogeny
  data(Ponerinae_tree_old_calib, package = "deepSTRAPP")
@@ -555,21 +626,26 @@ if (deepSTRAPP::is_dev_version())
  # No overlap in ranges
  table(Ponerinae_binary_range_table$Old_World, Ponerinae_binary_range_table$New_World)
 
- Ponerinae_NO_data <- stats::setNames(object = Ponerinae_binary_range_table$Old_World,
+ Ponerinae_NO_tip_data <- stats::setNames(object = Ponerinae_binary_range_table$Old_World,
                                       nm = Ponerinae_binary_range_table$Taxa)
- Ponerinae_NO_data <- as.character(Ponerinae_NO_data)
- Ponerinae_NO_data[Ponerinae_NO_data == "TRUE"] <- "O" # O = Old World
- Ponerinae_NO_data[Ponerinae_NO_data == "FALSE"] <- "N" # N = New World
- names(Ponerinae_NO_data) <- Ponerinae_binary_range_table$Taxa
- table(Ponerinae_NO_data)
+ Ponerinae_NO_tip_data <- as.character(Ponerinae_NO_tip_data)
+ Ponerinae_NO_tip_data[Ponerinae_NO_tip_data == "TRUE"] <- "O" # O = Old World
+ Ponerinae_NO_tip_data[Ponerinae_NO_tip_data == "FALSE"] <- "N" # N = New World
+ names(Ponerinae_NO_tip_data) <- Ponerinae_binary_range_table$Taxa
+ table(Ponerinae_NO_tip_data)
 
  colors_per_ranges <- c("mediumpurple2", "peachpuff2")
  names(colors_per_ranges) <- c("N", "O")
 
  \donttest{ # (May take several minutes to run)
+
+ # Load ape and BioGeoBEARS to use models internally
+ library(ape)
+ library(BioGeoBEARS)
+
  ## Run evolutionary models
  Ponerinae_biogeo_data <- prepare_trait_data(
-    tip_data = Ponerinae_NO_data,
+   tip_data = Ponerinae_NO_tip_data,
     trait_data_type = "biogeographic",
     phylo = Ponerinae_tree_old_calib,
     evolutionary_models = "DEC+J", # Default = "DEC" for biogeographic
@@ -588,32 +664,36 @@ if (deepSTRAPP::is_dev_version())
 
  ## Set for time steps of 5 My. Will generate deepSTRAPP workflows from 0 to 40 Mya.
  time_range <- c(0, 40)
- time_step_duration <- 10
+ time_step_duration <- 5
 
  \donttest{ # (May take several minutes to run)
  ## Run deepSTRAPP on net diversification rates for time-steps = 0 to 40 Mya.
  Ponerinae_deepSTRAPP_biogeo_old_calib_0_40 <- run_deepSTRAPP_over_time(
-    densityMaps = Ponerinae_biogeo_data_old_calib$densityMaps,
+   densityMaps = Ponerinae_biogeo_data_old_calib$densityMaps,
+   # Inform the nb of simulations to reconstruct state distribution across stochastic maps
+    nb_simulations = 100,
     ace = Ponerinae_biogeo_data_old_calib$ace,
-    tip_data = Ponerinae_ON_tip_data,
+    tip_data = Ponerinae_NO_tip_data,
     trait_data_type = "biogeographic",
     BAMM_object = Ponerinae_BAMM_object_old_calib,
     time_range = time_range,
     time_step_duration = time_step_duration,
     seed = 1234, # Set seed for reproducibility
     alpha = 0.10, # Select a generous level of significance for the sake of the example
+    uncertainty_strategy = "paired",
     rate_type = "net_diversification",
     return_perm_data = TRUE,
     extract_trait_data_melted_df = TRUE,
     extract_diversification_data_melted_df = TRUE,
     return_STRAPP_results = TRUE,
-    return_updated_trait_data_with_Map = TRUE,
-    return_updated_BAMM_object = TRUE,
+    return_updated_Maps = TRUE,
+    return_updated_BAMM_objects = TRUE,
     verbose = TRUE,
     verbose_extended = TRUE) }
 
  ## Load directly output
- data(Ponerinae_deepSTRAPP_biogeo_old_calib_0_40, package = "deepSTRAPP")
+ Ponerinae_deepSTRAPP_biogeo_old_calib_0_40 <- readRDS(system.file("extdata",
+    "Ponerinae_deepSTRAPP_biogeo_old_calib_0_40.rds", package = "deepSTRAPP"))
  deepSTRAPP_outputs <- Ponerinae_deepSTRAPP_biogeo_old_calib_0_40
  ## This dataset is only available in development versions installed from GitHub.
  # It is not available in CRAN versions.
@@ -629,9 +709,15 @@ if (deepSTRAPP::is_dev_version())
 
  # Access bioregeographic range data in a melted data.frame
  head(deepSTRAPP_outputs$trait_data_df_over_time)
+ # Ranges were extracted from densityMaps recording only frequency of states.
+ # Thus, ranges have been distributed accordingly across 'Dummy_maps'
+ # to reproduce the recorded frequencies.
+ table(deepSTRAPP_outputs$trait_data_df_over_time$Map_ID)
 
  # Access the diversification data in a melted data.frame
  head(deepSTRAPP_outputs$diversification_data_df_over_time)
+ # Diversification data includes 1000 BAMM posteriors
+ table(deepSTRAPP_outputs$diversification_data_df_over_time$BAMM_sample_ID)
 
  # Access details of deepSTRAPP results
  str(deepSTRAPP_outputs$STRAPP_results, max.level = 2)
@@ -640,7 +726,7 @@ if (deepSTRAPP::is_dev_version())
 
  \donttest{ # (May take time to plot)
  # Plot updated densityMaps for time step n°2 = 10My
- densityMaps_10My <- deepSTRAPP_outputs$updated_trait_data_with_Map_over_time[[2]]
+ densityMaps_10My <- deepSTRAPP_outputs$updated_Maps_over_time[[2]]
  plot_densityMaps_overlay(densityMaps_10My$densityMaps)
 
  # Plot diversification rates on updated phylogeny for time step n°2
@@ -655,11 +741,11 @@ if (deepSTRAPP::is_dev_version())
  # Plot p-values of Mann-Whitney-Wilcoxon tests across all time-steps
  plot_STRAPP_pvalues_over_time(
     deepSTRAPP_outputs = deepSTRAPP_outputs,
-    alpha = 0.05)
+    alpha = 0.10) # Set a generous significance threshold for the example
 
- # Plot evolution of mean rates through time
+# Plot evolution of mean rates through time
  plot_rates_through_time(deepSTRAPP_outputs = deepSTRAPP_outputs,
-    colors_per_levels = colors_per_ranges)
+   colors_per_levels = colors_per_ranges, plot_CI = TRUE)
 
  # Plot rates vs. trait values across branches for time step n°2 = 10 My
  plot_rates_vs_trait_data_for_focal_time(
@@ -670,9 +756,9 @@ if (deepSTRAPP::is_dev_version())
  # Plot histogram of Mann-Whitney-Wilcoxon test stats for time step n°2 = 10My
  plot_histogram_STRAPP_test_for_focal_time(
     deepSTRAPP_outputs = deepSTRAPP_outputs,
-    focal_time = 10)
+   focal_time = 10)
 
- # Plot histograms of Mann-Whitney-Wilcoxon test stats for all time-steps (One plot per time-step)
+# Plot histograms of Mann-Whitney-Wilcoxon test stats for all time-steps (One plot per time-step)
  plot_histograms_STRAPP_tests_over_time(
     deepSTRAPP_outputs = deepSTRAPP_outputs,
     display_plots = TRUE,

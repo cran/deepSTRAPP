@@ -1,26 +1,26 @@
 
 
 ### Functions to cut the phylogeny and posterior probability mapping of a categorical trait for a given focal time in the past
-## cut_densityMap_for_focal_time() => cut a single densityMap object
-## cut_densityMaps_for_focal_time() => cut all densityMaps in a list
+## 1/ cut_densityMap_for_focal_time() => cut a single densityMap object
+## 2/ cut_densityMaps_for_focal_time() => cut all densityMaps in a list
 
-## Function to cut a single densityMap object ####
+## 1/ Function to cut a single densityMap object ####
 
 #' @title Cut the phylogeny and posterior probability mapping of a categorical trait for a given focal time in the past
 #'
 #' @description Cuts off all the branches of the phylogeny which are
 #'   younger than a specific time in the past (i.e. the `focal_time`).
-#'   Branches overlapping the `focal_time` are shorten to the `focal_time`.
+#'   Branches overlapping the `focal_time` are shortened to the `focal_time`.
 #'   Likewise, remove posterior probability mapping of the categorical trait for the cut off branches
 #'   by updating the `$tree$maps` and `$tree$mapped.edge` elements.
 #'
 #' @param densityMap Object of class `"densityMap"`, typically generated with [phytools::densityMap()],
 #'   that contains a phylogenetic tree and associated posterior probability mapping of a categorical trait.
 #'   The phylogenetic tree must be rooted and fully resolved/dichotomous,
-#'   but it does not need to be ultrametric (it can includes fossils).
-#' @param focal_time Numerical. The time, in terms of time distance from the present,
+#'   but it does not need to be ultrametric (it can include fossils).
+#' @param focal_time Numeric. The time, in terms of time distance from the present,
 #'   for which the tree and mapping must be cut. It must be smaller than the root age of the phylogeny.
-#' @param keep_tip_labels Logical. Specify whether terminal branches with a single descendant tip must retained their initial `tip.label`. Default is `TRUE`.
+#' @param keep_tip_labels Logical. Specify whether terminal branches with a single descendant tip must retain their initial `tip.label`. Default is `TRUE`.
 #'
 #' @export
 #' @importFrom phytools nodeHeights plot.densityMap
@@ -41,25 +41,24 @@
 #' @return The function returns the cut densityMap as an object of class `"densityMap"` with three elements.
 #'
 #'   It contains a `$tree` element of classes `"simmap"` and `"phylo"`. This function updates and adds multiple useful sub-elements to the `$tree` element.
-#'     * `$maps` An updated list of named numerical vectors. Provides the mapping of posterior probability of the state along each remaining edge.
+#'     * `$maps` An updated list of named numeric vectors. Provides the mapping of posterior probability of the state along each remaining edge.
 #'     * `$mapped.edge` An updated matrix. Provides the evolutionary time spent across posterior probabilities (columns) along the remaining edges (rows).
 #'     * `$root_age` Integer. Stores the age of the root of the tree.
 #'     * `$nodes_ID_df` Data.frame with two columns. Provides the conversion from the `new_node_ID` to the `initial_node_ID`. Each row is a node.
-#'     * `$initial_nodes_ID` Vector of character strings. Provides the initial ID of internal nodes. Used to plot internal node IDs as labels with [ape::nodelabels()].
+#'     * `$initial_nodes_ID` Character vector. Provides the initial ID of internal nodes. Used to plot internal node IDs as labels with [ape::nodelabels()].
 #'     * `$edges_ID_df` Data.frame with two columns. Provides the conversion from the `new_edge_ID` to the `initial_edge_ID`. Each row is an edge/branch.
-#'     * `$initial_edges_ID` Vector of character strings. Provides the initial ID of edges/branches. Used to plot edge/branch IDs as labels with [ape::edgelabels()].
+#'     * `$initial_edges_ID` Character vector. Provides the initial ID of edges/branches. Used to plot edge/branch IDs as labels with [ape::edgelabels()].
 #'
 #'   The `$col` element describes the colors used to map each possible posterior probability value from 0 to 1000.
 #'
-#'   The `$states` element provide the name of the states. Here, the first value is the absence of the state labeled as "Not X" with X being the state.
+#'   The `$states` element provides the name of the states. Here, the first value is the absence of the state labeled as "Not X" with X being the state.
 #'   The second value is the name of the state.
 #'
 #'   High posterior probability reflects high likelihood to harbor the state. Low probability reflects high likelihood to NOT harbor the state.
 #'
 #' @author Maël Doré
 #'
-#' @seealso [deepSTRAPP::cut_phylo_for_focal_time()] [deepSTRAPP::extract_most_likely_trait_values_for_focal_time()]
-#'  [deepSTRAPP::extract_most_likely_states_from_densityMaps_for_focal_time()]
+#' @seealso [deepSTRAPP::cut_phylo_for_focal_time()] [deepSTRAPP::extract_most_likely_trait_values_for_focal_time()] [deepSTRAPP::extract_all_trait_values_for_focal_time()]
 #'
 #'  For a guided tutorial, see this vignette: \code{vignette("cut_phylogenies", package = "deepSTRAPP")}
 #'
@@ -202,23 +201,23 @@ cut_densityMap_for_focal_time <- function(densityMap, focal_time, keep_tip_label
   return(updated_densityMap)
 }
 
-## Function to cut a list of densityMap objects ####
+## 2/ Function to cut a list of densityMap objects ####
 
 #' @title Cut phylogenies and posterior probability mapping of each state for a given focal time in the past
 #'
 #' @description Cuts off all the branches of the phylogeny which are
 #'   younger than a specific time in the past (i.e. the `focal_time`).
-#'   Branches overlapping the `focal_time` are shorten to the `focal_time`.
+#'   Branches overlapping the `focal_time` are shortened to the `focal_time`.
 #'   Likewise, remove posterior probability mapping of the categorical trait for the cut off branches
 #'   by updating the `$tree$maps` and `$tree$mapped.edge` elements.
 #'
 #' @param densityMaps List of objects of class `"densityMap"`, typically generated with [deepSTRAPP::prepare_trait_data()].
 #'   Each densityMap (see [phytools::densityMap()]) contains a phylogenetic tree and associated posterior probability mapping of a categorical trait.
 #'   The phylogenetic tree must be rooted and fully resolved/dichotomous,
-#'   but it does not need to be ultrametric (it can includes fossils).
-#' @param focal_time Numerical. The time, in terms of time distance from the present,
+#'   but it does not need to be ultrametric (it can include fossils).
+#' @param focal_time Numeric. The time, in terms of time distance from the present,
 #'   for which the tree and mapping must be cut. It must be smaller than the root age of the phylogeny.
-#' @param keep_tip_labels Logical. Specify whether terminal branches with a single descendant tip must retained their initial `tip.label`. Default is `TRUE`.
+#' @param keep_tip_labels Logical. Specify whether terminal branches with a single descendant tip must retain their initial `tip.label`. Default is `TRUE`.
 #'
 #' @export
 #' @importFrom phytools nodeHeights plot.densityMap
@@ -240,13 +239,13 @@ cut_densityMap_for_focal_time <- function(densityMap, focal_time, keep_tip_label
 #'
 #'   Each densityMap object contains three elements:
 #'   * `$tree` element of classes `"simmap"` and `"phylo"`. This function updates and adds multiple useful sub-elements to the `$tree` element.
-#'     - `$maps` An updated list of named numerical vectors. Provides the mapping of posterior probability of the state along each remaining edge.
+#'     - `$maps` An updated list of named numeric vectors. Provides the mapping of posterior probability of the state along each remaining edge.
 #'     - `$mapped.edge` An updated matrix. Provides the evolutionary time spent across posterior probabilities (columns) along the remaining edges (rows).
 #'     - `$root_age` Integer. Stores the age of the root of the tree.
 #'     - `$nodes_ID_df` Data.frame with two columns. Provides the conversion from the `new_node_ID` to the `initial_node_ID`. Each row is a node.
-#'     - `$initial_nodes_ID` Vector of character strings. Provides the initial ID of internal nodes. Used to plot internal node IDs as labels with [ape::nodelabels()].
+#'     - `$initial_nodes_ID` Character vector. Provides the initial ID of internal nodes. Used to plot internal node IDs as labels with [ape::nodelabels()].
 #'     - `$edges_ID_df` Data.frame with two columns. Provides the conversion from the `new_edge_ID` to the `initial_edge_ID`. Each row is an edge/branch.
-#'     - `$initial_edges_ID` Vector of character strings. Provides the initial ID of edges/branches. Used to plot edge/branch IDs as labels with [ape::edgelabels()].
+#'     - `$initial_edges_ID` Character vector. Provides the initial ID of edges/branches. Used to plot edge/branch IDs as labels with [ape::edgelabels()].
 #'
 #'   * `$col` element describes the colors used to map each possible posterior probability value from 0 to 1000.
 #'
@@ -258,8 +257,7 @@ cut_densityMap_for_focal_time <- function(densityMap, focal_time, keep_tip_label
 #' @author Maël Doré
 #'
 #' @seealso [deepSTRAPP::cut_phylo_for_focal_time()] [deepSTRAPP::cut_densityMap_for_focal_time()]
-#'  [deepSTRAPP::extract_most_likely_trait_values_for_focal_time()]
-#'  [deepSTRAPP::extract_most_likely_states_from_densityMaps_for_focal_time()]
+#'  [deepSTRAPP::extract_most_likely_trait_values_for_focal_time()] [deepSTRAPP::extract_all_trait_values_for_focal_time()]
 #'
 #' @examples
 #' # ----- Prepare data ----- #
@@ -329,7 +327,6 @@ cut_densityMap_for_focal_time <- function(densityMap, focal_time, keep_tip_label
 #' # Plot updated/cut density maps
 #' plot_densityMaps_overlay(densityMaps = updated_mammals_densityMaps, fsize = 0.8) }
 #'
-
 
 cut_densityMaps_for_focal_time <- function(densityMaps, focal_time, keep_tip_labels = TRUE)
 {

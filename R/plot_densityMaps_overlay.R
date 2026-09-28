@@ -5,15 +5,18 @@
 #' @description Plot on a time-calibrated phylogeny the evolution of a categorical trait/biogeographic ranges
 #'   summarized from `densityMaps` typically generated with [deepSTRAPP::prepare_trait_data()].
 #'   Each branch is colored according to the posterior probability of being in a given state/range.
-#'   Color for each state/range are overlaid using transparency to produce a single plot for all states/ranges.
+#'   Colors for each state/range are overlaid using transparency to produce a single plot for all states/ranges.
 #'
 #' @param densityMaps List of objects of class `"densityMap"`, typically generated with [deepSTRAPP::prepare_trait_data()],
 #'   that contains a phylogenetic tree and associated posterior probability of being in a given state/range along branches.
 #'   Each object (i.e., `densityMap`) corresponds to a state/range. If no color is provided for multi-area ranges, they will be interpolated.
 #' @param colors_per_levels Named character string. To set the colors to use to map each state/range posterior probabilities. Names = states/ranges; values = colors.
-#'   If `NULL` (default), the color scale provided `densityMaps` will be used.
+#'   If `NULL` (default), the color scale provided in the `densityMaps` will be used.
+#'   Provide the full argument name to avoid ambiguity with the `col` graphical argument.
 #' @param add_ACE_pies Logical. Whether to add pies of posterior probabilities of states/ranges at internal nodes on the mapped phylogeny. Default = `TRUE`.
-#' @param cex_pies Numerical. To adjust the size of the ACE pies. Default = `0.5`.
+#'   Provide the full argument name to avoid ambiguity with the `add` graphical argument.
+#' @param cex_pies Numeric. To adjust the size of the ACE pies. Default = `0.5`.
+#'   Provide the full argument name to avoid ambiguity with the `cex` graphical argument.
 #' @param ace Numerical matrix. To provide the posterior probabilities of ancestral states/ranges (characters) estimates (ACE) at internal nodes
 #'   used to plot the ACE pies. Rows are internal nodes. Columns are states/ranges. Values are posterior probabilities of each state per node.
 #'   Typically generated with [deepSTRAPP::prepare_trait_data()] in the `$ace` slot.
@@ -57,7 +60,7 @@
 #' # Set symmetrical rates between state 2 ("kiss") and state 3 ("suction")
 #' Q_matrix = rbind(c(NA, 0, 0), c(1, NA, 2), c(0, 2, NA))
 #'
-#' # Set colors per states
+#' # Set colors per state
 #' colors_per_levels <- c("limegreen", "orange", "dodgerblue")
 #' names(colors_per_levels) <- c("bite", "kiss", "suction")
 #'
@@ -89,11 +92,11 @@
 
 plot_densityMaps_overlay <- function (
     densityMaps,
-    colors_per_levels = NULL,
-    add_ACE_pies = TRUE,
-    cex_pies = 0.5,
     ace = NULL,
     ..., # To allow to pass down arguments in the plotSimmap() function
+    colors_per_levels = NULL, # Placed after ... so any 'col' argument provided is not captured by 'colors_per_levels'
+    add_ACE_pies = TRUE, # Placed after ... so any 'add' argument provided is not captured by 'add_ACE_pies'
+    cex_pies = 0.5, # Placed after ... so any 'cex' argument provided is not captured by 'cex_pies'
     display_plot = TRUE,
     PDF_file_path = NULL)
 {
@@ -161,9 +164,37 @@ plot_densityMaps_overlay <- function (
     }
   }
 
-  ## Save initial par() and reassign them on exit
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar))
+  ## Save the graphical parameters on entry and, on exit, restore only those this function actually changed.
+
+  # List graphical parameters describing the plot that now exists (Never to restore as they describe the current plot state)
+  plot_state_par_names <- c("usr", "plt", "fig", "mfg", "new", "xaxp", "yaxp", "pin")
+  # Save current graphic parameters
+  entry_par <- par(no.readonly = TRUE)
+
+  # On exit, compare changes in par and restore the ones that have change, but the plot_state_par
+  on.exit({
+    # List par on exit
+    exit_par <- par(no.readonly = TRUE)
+    # Identify differences with initial parameters
+    changed_par_names <- names(entry_par)[!vapply(X = names(entry_par),
+                                                  FUN = function (x) { isTRUE(all.equal(entry_par[[x]], exit_par[[x]])) },
+                                                  FUN.VALUE = logical(1))]
+    # Exclude plot state parameters from the restore
+    changed_par_names <- setdiff(changed_par_names, plot_state_par_names)
+    # Restore parameters if any has changed
+    if (length(changed_par_names) > 0)
+    {
+      par(entry_par[changed_par_names])
+    }
+
+    # Force new to FALSE, so the next plot calling plot.new() start on a new clean window,
+    # But only if we actually plot something
+    if (isTRUE(display_plot) || (isTRUE(exit_par$new) && !isTRUE(entry_par$new)))
+    {
+      par(new = FALSE)
+    }
+  }, add = TRUE)
+
 
   ## Filter list of additional arguments to ensure default values are used if not provided
   add_args <- list(...)

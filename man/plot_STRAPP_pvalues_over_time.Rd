@@ -19,26 +19,26 @@ plot_STRAPP_pvalues_over_time(
 }
 \arguments{
 \item{deepSTRAPP_outputs}{List of elements generated with \code{\link[=run_deepSTRAPP_over_time]{run_deepSTRAPP_over_time()}},
-that summarize the results of multiple deepSTRAPP across \verb{$time_steps}.}
+that summarize the results of multiple deepSTRAPP runs across \verb{$time_steps}.}
 
-\item{time_range}{Vector of two numerical values. Time boundaries used for X-axis the plot.
+\item{time_range}{Numeric vector of length 2. Time boundaries used for the X-axis of the plot.
 If \code{NULL} (the default), the range of data provided in \code{deepSTRAPP_outputs} will be used.}
 
-\item{pvalues_max}{Numerical. Set the max boundary used for the Y-axis of the plot.
+\item{pvalues_max}{Numeric. Set the max boundary used for the Y-axis of the plot.
 If \code{NULL} (the default), the maximum p-value provided in \code{deepSTRAPP_outputs} will be used.}
 
-\item{alpha}{Numerical. Significance level to display as a red dashed line on the plot. If set to \code{NULL}, no line will be added. Default is \code{0.05}.}
+\item{alpha}{Numeric. Significance level to display as a red dashed line on the plot. If set to \code{NULL}, no line will be added. Default is \code{0.05}.}
 
 \item{display_plot}{Logical. Whether to display the plot generated in the R console. Default is \code{TRUE}.}
 
 \item{plot_significant_time_frame}{Logical. Whether to display a green band over the time frame that yields significant results according to the chosen alpha level. Default is \code{TRUE}.}
 
-\item{plot_posthoc_tests}{Logical. For multinominal data only. Whether to plot the p-values for the overall Kruskal-Wallis test across all states (\code{plot_posthoc_tests = FALSE}),
+\item{plot_posthoc_tests}{Logical. For multinomial data only. Whether to plot the p-values for the overall Kruskal-Wallis test across all states (\code{plot_posthoc_tests = FALSE}),
 or plot the p-values for the pairwise post hoc Dunn's test across pairs of states (\code{plot_posthoc_tests = TRUE}). Default is \code{FALSE}.
 This is only possible if \code{deepSTRAPP_outputs} contains the \verb{$pvalues_summary_df_for_posthoc_pairwise_tests} element returned by
 \code{\link[=run_deepSTRAPP_over_time]{run_deepSTRAPP_over_time()}} when \code{posthoc_pairwise_tests = TRUE}.}
 
-\item{select_posthoc_pairs}{Vector of character strings used to specify the pairs to include in the plot. Names of pairs must match the pairs found in
+\item{select_posthoc_pairs}{Character vector used to specify the pairs to include in the plot. Names of pairs must match the pairs found in
 \code{deepSTRAPP_outputs$pvalues_summary_df_for_posthoc_pairwise_tests$pair}. Default is "all" to include all pairs.}
 
 \item{plot_adjusted_pvalues}{Logical. Whether to display the p-values adjusted for multiple testing rather than the raw p-values.
@@ -50,27 +50,27 @@ See argument 'p.adjust_method' in \code{\link[=run_deepSTRAPP_for_focal_time]{ru
 The function returns a list of classes \code{gg} and \code{ggplot}.
 This object is a ggplot that can be displayed on the console with \code{print(output)}.
 It corresponds to the plot being displayed on the console when the function is run, if \code{display_plot = TRUE},
-and can be further modify for aesthetics using the ggplot2 grammar.
+and can be further modified for aesthetics using the ggplot2 grammar.
 
 If a \code{PDF_file_path} is provided, the function will also generate a PDF file of the plot.
 }
 \description{
 Plot the evolution of the p-values of STRAPP tests
-carried out for across multiple \code{time_steps}, obtained from
+carried out across multiple \code{time_steps}, obtained from
 \code{\link[=run_deepSTRAPP_over_time]{run_deepSTRAPP_over_time()}}.
 
 By default, return a plot with a single line for p-values of overall tests.
 If \code{plot_posthoc_tests = TRUE}, it will return a plot with multiple lines, one per pair in post hoc tests
-(only for multinominal data, with more than two states).
+(only for multinomial data, with more than two states).
 
 If a PDF file path is provided in \code{PDF_file_path}, the plot will be saved directly in a PDF file.
 }
 \details{
-Plots are build based on the p-values recorded in summary_df provided by \code{\link[=run_deepSTRAPP_over_time]{run_deepSTRAPP_over_time()}}.
+Plots are built based on the p-values recorded in summary_df provided by \code{\link[=run_deepSTRAPP_over_time]{run_deepSTRAPP_over_time()}}.
 
 For overall tests, those p-values are found in \verb{$pvalues_summary_df}.
 
-For multinominal data (categorical or biogeographic data with more than 2 states), it is possible to plot p-values of post hoc pairwise tests.
+For multinomial data (categorical or biogeographic data with more than 2 states), it is possible to plot p-values of post hoc pairwise tests.
 Set \code{plot_posthoc_tests = TRUE} to generate plots for the pairwise post hoc Dunn's test across pairs of states.
 To achieve this, the \code{deepSTRAPP_outputs} input object must contain a \verb{$pvalues_summary_df_for_posthoc_pairwise_tests} element that summarizes p-values
 computed across pairs of states for all post hoc tests. This is obtained from \code{\link[=run_deepSTRAPP_over_time]{run_deepSTRAPP_over_time()}} when setting
@@ -80,7 +80,8 @@ computed across pairs of states for all post hoc tests. This is obtained from \c
 if (deepSTRAPP::is_dev_version())
 {
   ## Load results of run_deepSTRAPP_over_time() for categorical data with 3-levels
-  data(Ponerinae_deepSTRAPP_cat_3lvl_old_calib_0_40, package = "deepSTRAPP")
+  Ponerinae_deepSTRAPP_cat_3lvl_old_calib_0_40 <- readRDS(system.file("extdata",
+     "Ponerinae_deepSTRAPP_cat_3lvl_old_calib_0_40.rds", package = "deepSTRAPP"))
   ## This dataset is only available in development versions installed from GitHub.
   # It is not available in CRAN versions.
   # Use remotes::install_github(repo = "MaelDore/deepSTRAPP") to get the latest development version.

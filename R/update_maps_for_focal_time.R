@@ -7,14 +7,14 @@
 #'
 #' @param tree_with_maps Object of class `"phylo"` with a character mapping stored in the `$maps` element.
 #'   The phylogenetic tree must be rooted and fully resolved/dichotomous,
-#'   but it does not need to be ultrametric (it can includes fossils).
-#' @param focal_time Numerical. The time, in terms of time distance from the present,
+#'   but it does not need to be ultrametric (it can include fossils).
+#' @param focal_time Numeric. The time, in terms of time distance from the present,
 #'   for which the character mapping must be cut. It must be smaller than the root age of the phylogeny.
 #'
 #' @importFrom phytools nodeHeights
 #'
 #' @return The function returns the mapped phylogeny with the mapping along edges/branches in `$maps` updated
-#'  such as it ends at the `focal_time`.
+#'  such that it ends at the `focal_time`.
 #'
 #' @author Maël Doré
 #'
@@ -159,7 +159,7 @@ update_maps_for_focal_time <- function(tree_with_maps, focal_time)
     }
   }
 
-  ## Length of maps and updated lenght should be equal
+  ## Length of maps and updated length should be equal
   # cbind(focal_edges_df$updated_length, lapply(X = updated_maps, FUN = sum))
 
   # Store updated maps

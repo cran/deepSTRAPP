@@ -11,19 +11,19 @@ plot_traits_vs_rates_on_phylogeny_for_focal_time(
   color_scale = NULL,
   colors_per_levels = NULL,
   add_ACE_pies = TRUE,
-  cex_pies = 0.5,
   rate_type = "net_diversification",
   keep_initial_colorbreaks = FALSE,
   add_regime_shifts = TRUE,
   configuration_type = "MAP",
   sample_index = 1,
-  adjust_size_to_prob = TRUE,
   regimes_fill = "grey",
   regimes_size = 1,
   regimes_pch = 21,
   regimes_border_col = "black",
   regimes_border_width = 1,
   ...,
+  cex_pies = 0.5,
+  adjust_size_to_prob = TRUE,
   display_plot = TRUE,
   PDF_file_path = NULL
 )
@@ -32,26 +32,25 @@ plot_traits_vs_rates_on_phylogeny_for_focal_time(
 \item{deepSTRAPP_outputs}{List of elements generated with \code{\link[=run_deepSTRAPP_for_focal_time]{run_deepSTRAPP_for_focal_time()}},
 that summarize the results of a STRAPP test for a specific time in the past (i.e. the \code{focal_time}).
 \code{deepSTRAPP_outputs} can also be extracted from the output of \code{\link[=run_deepSTRAPP_over_time]{run_deepSTRAPP_over_time()}} that
-run the whole deepSTRAPP workflow over multiple time-steps.}
+run the whole deepSTRAPP workflow over multiple time-steps.
+This must contain an updated \code{contMap}/\code{densityMaps} and updated \code{BAMM_object} (see Details section below).}
 
-\item{focal_time}{Numerical. (Optional) If \code{deepSTRAPP_outputs} comprises results over multiple time-steps
+\item{focal_time}{Numeric. (Optional) If \code{deepSTRAPP_outputs} comprises results over multiple time-steps
 (i.e., output of \code{\link[=run_deepSTRAPP_over_time]{run_deepSTRAPP_over_time()}}, this is the time of the STRAPP test targeted for plotting.}
 
-\item{color_scale}{Vector of character string. List of colors to use to build the color scale with \code{\link[grDevices:colorRamp]{grDevices::colorRampPalette()}}
+\item{color_scale}{Character vector. List of colors to use to build the color scale with \code{\link[grDevices:colorRamp]{grDevices::colorRampPalette()}}
 showing the evolution of a continuous trait. From lowest values to highest values. (For continuous trait data only)}
 
 \item{colors_per_levels}{Named character string. To set the colors to use to map each state/range posterior probabilities. Names = states/ranges; values = colors.
-If \code{NULL} (default), the color scale provided \code{densityMaps} will be used. (For categorical and biogeographic data only)}
+If \code{NULL} (default), the color scale provided in \code{densityMaps} will be used. (For categorical and biogeographic data only)}
 
 \item{add_ACE_pies}{Logical. Whether to add pies of posterior probabilities of states/ranges at internal nodes on the mapped phylogeny. Default = \code{TRUE}.}
-
-\item{cex_pies}{Numerical. To adjust the size of the ACE pies. Default = \code{0.5}.}
 
 \item{rate_type}{A character string specifying the type of diversification rates to plot.
 Must be one of 'speciation', 'extinction' or 'net_diversification' (default).}
 
 \item{keep_initial_colorbreaks}{Logical. Whether to keep the same color breaks as used for the most recent focal time. Typically, the current time (t = 0).
-This will only works if you provide the output of \code{\link[=run_deepSTRAPP_over_time]{run_deepSTRAPP_over_time()}} as \code{deepSTRAPP_outputs}. Default = \code{FALSE}.}
+This will only work if you provide the output of \code{\link[=run_deepSTRAPP_over_time]{run_deepSTRAPP_over_time()}} as \code{deepSTRAPP_outputs}. Default = \code{FALSE}.}
 
 \item{add_regime_shifts}{Logical. Whether to add the location of regime shifts on the phylogeny (Step 2). Default is \code{TRUE}.}
 
@@ -62,20 +61,16 @@ This regime shift configuration is the most frequent configuration among the pos
 This is the default option.
 \item \code{configuration_type = "MSC"}: Use the average locations recorded in posterior samples with the Maximum Shift Credibility (MSC) configuration.
 This regime shift configuration has the highest product of marginal probabilities across branches (See \code{\link[BAMMtools:maximumShiftCredibility]{BAMMtools::maximumShiftCredibility()}}).
-\item \code{configuration_type = "index"}: Use the configuration of a unique posterior sample those index is provided in \code{sample_index}.
+\item \code{configuration_type = "index"}: Use the configuration of a unique posterior sample whose index is provided in \code{sample_index}.
 }}
 
 \item{sample_index}{Integer. Index of the posterior samples to use to plot the location of regime shifts.
 Used only if \code{configuration_type = index}. Default = \code{1}.}
 
-\item{adjust_size_to_prob}{Logical. Whether to scale the size of the symbols showing the location of regime shifts according to
-the marginal shift probability of the shift happening on each location/branch. This will only works if there is an \verb{$MSP_tree} element
-summarizing the marginal shift probabilities across branches in the \code{BAMM_object}. Default is \code{TRUE}.}
-
 \item{regimes_fill}{Character string. Set the color of the background of the symbols showing the location of regime shifts.
 Equivalent to the \code{bg} argument in \code{\link[BAMMtools:addBAMMshifts]{BAMMtools::addBAMMshifts()}}. Default is \code{"grey"}.}
 
-\item{regimes_size}{Numerical. Set the size of the symbols showing the location of regime shifts.
+\item{regimes_size}{Numeric. Set the size of the symbols showing the location of regime shifts.
 Equivalent to the \code{cex} argument in \code{\link[BAMMtools:addBAMMshifts]{BAMMtools::addBAMMshifts()}}. Default is \code{1}.}
 
 \item{regimes_pch}{Integer. Set the shape of the symbols showing the location of regime shifts.
@@ -84,11 +79,20 @@ Equivalent to the \code{pch} argument in \code{\link[BAMMtools:addBAMMshifts]{BA
 \item{regimes_border_col}{Character string. Set the color of the border of the symbols showing the location of regime shifts.
 Equivalent to the \code{col} argument in \code{\link[BAMMtools:addBAMMshifts]{BAMMtools::addBAMMshifts()}}. Default is \code{"black"}.}
 
-\item{regimes_border_width}{Numerical. Set the width of the border of the symbols showing the location of regime shifts.
+\item{regimes_border_width}{Numeric. Set the width of the border of the symbols showing the location of regime shifts.
 Equivalent to the \code{lwd} argument in \code{\link[BAMMtools:addBAMMshifts]{BAMMtools::addBAMMshifts()}}. Default is \code{1}.}
 
 \item{...}{Additional graphical arguments to pass down to \code{\link[phytools:contMap]{phytools::plot.contMap()}}, \code{\link[phytools:plotSimmap]{phytools::plotSimmap()}},
-\code{\link[=plot_densityMaps_overlay]{plot_densityMaps_overlay()}}, \code{\link[BAMMtools:plot]{BAMMtools::plot.bammdata()}}, \code{\link[BAMMtools:addBAMMshifts]{BAMMtools::addBAMMshifts()}}, and \code{\link[=par]{par()}}.}
+\code{\link[=plot_densityMaps_overlay]{plot_densityMaps_overlay()}}, \code{\link[BAMMtools:plot]{BAMMtools::plot.bammdata()}}, \code{\link[BAMMtools:addBAMMshifts]{BAMMtools::addBAMMshifts()}}, and \code{\link[=par]{par()}}.
+If provided, \code{par.reset} is ignored with a message. See \code{\link[=plot_BAMM_rates]{plot_BAMM_rates()}} for details.}
+
+\item{cex_pies}{Numeric. To adjust the size of the ACE pies. Default = \code{0.5}.
+Provide the full argument name to avoid ambiguity with the \code{cex} graphical argument.}
+
+\item{adjust_size_to_prob}{Logical. Whether to scale the size of the symbols showing the location of regime shifts according to
+the marginal shift probability of the shift happening on each location/branch. This will only work if there is an \verb{$MSP_tree} element
+summarizing the marginal shift probabilities across branches in the \code{BAMM_object}. Default is \code{TRUE}.
+Provide the full argument name to avoid ambiguity with the \code{adj} graphical argument.}
 
 \item{display_plot}{Logical. Whether to display the plot generated in the R console. Default is \code{TRUE}.}
 
@@ -110,16 +114,16 @@ Plot two mapped phylogenies with evolutionary data with branches cut off at \cod
 \itemize{
 \item For continuous data: Each branch is colored according to the estimates value of the traits.
 \item For categorical and biogeographic data: Each branch is colored according to the posterior probability
-of being in a given state/range. Color for each state/range are overlaid using transparency
+of being in a given state/range. Colors for each state/range are overlaid using transparency
 to produce a single plot for all states/ranges.
 }
-\item Right facet: plot the evolution of diversification rates and location of regime shits estimated from a BAMM
+\item Right facet: plot the evolution of diversification rates and location of regime shifts estimated from a BAMM
 (Bayesian Analysis of Macroevolutionary Mixtures).
 Each branch is colored according to the estimated rates of speciation, extinction, or net diversification
-stored in an object of class \code{bammdata}. Rates can vary along time, thus colors evolved along individual branches.
+stored in an object of class \code{"bammdata"}. Rates can vary along time, thus colors evolve along individual branches.
 }
 
-This function is a wrapper multiple plotting functions:
+This function is a wrapper of multiple plotting functions:
 \itemize{
 \item For continuous traits: \code{\link[=plot_contMap]{plot_contMap()}}
 \item For categorical and biogeographic data: \code{\link[=plot_densityMaps_overlay]{plot_densityMaps_overlay()}}
@@ -129,26 +133,27 @@ This function is a wrapper multiple plotting functions:
 \details{
 The main input \code{deepSTRAPP_outputs} is the typical output of \code{\link[=run_deepSTRAPP_for_focal_time]{run_deepSTRAPP_for_focal_time()}}.
 It provides information on results of a STRAPP test performed at a given \code{focal_time}, and can also encompass
-updated phylogenies with mapped trait evolution and diversification rates and regimes shifts if appropriate arguments are set.
+updated phylogenies with mapped trait evolution and diversification rates and regime shifts if appropriate arguments are set.
 \itemize{
-\item \code{return_updated_trait_data_with_Map} must be set to \code{TRUE} so that the trait data extracted for the given \code{focal_time}
-and the updated version of mapped phylogeny (\code{contMap}/\code{densityMaps}) are returned among the outputs under \verb{$updated_trait_data_with_Map}.
-The updated \code{contMap}/\code{densityMaps} consists in cutting off branches and mappings that are younger than the \code{focal_time}.
+\item \code{return_updated_Maps} must be set to \code{TRUE} so that the updated version of mapped phylogeny (\code{contMap}/\code{densityMaps})
+for the given \code{focal_time} is returned among the outputs under \verb{$updated_Maps}.
+The update of the \code{contMap}/\code{densityMaps} consists of cutting off branches and mappings that are younger than the \code{focal_time}.
+\code{contMap}/\code{densityMaps} must have been provided among the inputs to \code{\link[=run_deepSTRAPP_for_focal_time]{run_deepSTRAPP_for_focal_time()}} in the first place.
 \item \code{return_updated_BAMM_object} must be set to \code{TRUE} so that the \code{updated_BAMM_object} with phylogeny and mapped diversification rates
 cut-off at the \code{focal_time} are returned among the outputs under \verb{$updated_BAMM_object}.
 }
 
 \verb{$MAP_BAMM_object} and \verb{$MSC_BAMM_object} elements are required in \verb{$updated_BAMM_object} to plot regime shift locations following the
 "MAP" or "MSC" \code{configuration_type} respectively.
-A \verb{$MSP_tree} element is required to scale the size of the symbols showing the location of regime shifts according marginal shift probabilities.
+A \verb{$MSP_tree} element is required to scale the size of the symbols showing the location of regime shifts according to marginal shift probabilities.
 (If \code{adjust_size_to_prob = TRUE}).
 
 Alternatively, the main input \code{deepSTRAPP_outputs} can be the output of \code{\link[=run_deepSTRAPP_over_time]{run_deepSTRAPP_over_time()}},
 providing results of STRAPP tests over multiple time-steps. In this case, you must provide a \code{focal_time} to select the
 unique time-step used for plotting.
 \itemize{
-\item \code{return_updated_trait_data_with_Map} must be set to \code{TRUE} so that the trait data extracted and
-the updated version of mapped phylogenies (\code{contMap}/\code{densityMaps}) are returned among the outputs under \verb{$updated_trait_data_with_Map_over_time}.
+\item \code{return_updated_Maps} must be set to \code{TRUE} so that the updated version of mapped phylogenies (\code{contMap}/\code{densityMaps})
+are returned among the outputs under \verb{$updated_Maps_over_time}.
 \item \code{return_updated_BAMM_object} must be set to \code{TRUE} so that the \code{BAMM_objects} with phylogeny and mapped diversification rates
 cut-off at the specified time-steps are returned among the outputs under \verb{$updated_BAMM_objects_over_time}.
 }
@@ -188,7 +193,7 @@ if (deepSTRAPP::is_dev_version())
  \donttest{ # (May take several minutes to run)
  # Run a Stochastic Mapping based on a Brownian Motion model
  # to interpolate values along branches and obtain a "contMap" object
- Ponerinae_contMap <- phytools::contMap(Ponerinae_tree, x = Ponerinae_cont_tip_data,
+ Ponerinae_contMap <- phytools::contMap(Ponerinae_tree_old_calib, x = Ponerinae_cont_tip_data,
                                         res = 100, # Number of time steps
                                         plot = FALSE)
  # Plot contMap = stochastic mapping of continuous trait
@@ -207,10 +212,8 @@ if (deepSTRAPP::is_dev_version())
    trait_data_type = "continuous",
    BAMM_object = Ponerinae_BAMM_object_old_calib,
    focal_time = focal_time,
-   rate_type = "net_diversification",
-   return_perm_data = TRUE,
-   extract_diversification_data_melted_df = TRUE,
-   return_updated_trait_data_with_Map = TRUE,
+   uncertainty_strategy = "rates_only",
+   return_updated_Maps = TRUE,
    return_updated_BAMM_object = TRUE)
 
  ## Explore output
@@ -245,21 +248,26 @@ if (deepSTRAPP::is_dev_version())
  # No overlap in ranges
  table(Ponerinae_binary_range_table$Old_World, Ponerinae_binary_range_table$New_World)
 
- Ponerinae_NO_data <- stats::setNames(object = Ponerinae_binary_range_table$Old_World,
+ Ponerinae_NO_tip_data <- stats::setNames(object = Ponerinae_binary_range_table$Old_World,
                                       nm = Ponerinae_binary_range_table$Taxa)
- Ponerinae_NO_data <- as.character(Ponerinae_NO_data)
- Ponerinae_NO_data[Ponerinae_NO_data == "TRUE"] <- "O" # O = Old World
- Ponerinae_NO_data[Ponerinae_NO_data == "FALSE"] <- "N" # N = New World
- names(Ponerinae_NO_data) <- Ponerinae_binary_range_table$Taxa
- table(Ponerinae_NO_data)
+ Ponerinae_NO_tip_data <- as.character(Ponerinae_NO_tip_data)
+ Ponerinae_NO_tip_data[Ponerinae_NO_tip_data == "TRUE"] <- "O" # O = Old World
+ Ponerinae_NO_tip_data[Ponerinae_NO_tip_data == "FALSE"] <- "N" # N = New World
+ names(Ponerinae_NO_tip_data) <- Ponerinae_binary_range_table$Taxa
+ table(Ponerinae_NO_tip_data)
 
  colors_per_levels <- c("mediumpurple2", "peachpuff2")
  names(colors_per_levels) <- c("N", "O")
 
  \donttest{ # (May take several minutes to run)
+
+ # Load ape and BioGeoBEARS to use models internally
+ library(ape)
+ library(BioGeoBEARS)
+
  ## Run evolutionary models
  Ponerinae_biogeo_data <- prepare_trait_data(
-     tip_data = Ponerinae_NO_data,
+     tip_data = Ponerinae_NO_tip_data,
      trait_data_type = "biogeographic",
      phylo = Ponerinae_tree_old_calib,
      evolutionary_models = "DEC+J", # Default = "DEC" for biogeographic
@@ -288,14 +296,13 @@ if (deepSTRAPP::is_dev_version())
  Ponerinae_deepSTRAPP_biogeo_old_calib_10My <- run_deepSTRAPP_for_focal_time(
     densityMaps = Ponerinae_biogeo_data_old_calib$densityMaps,
     ace = Ponerinae_biogeo_data_old_calib$ace,
-    tip_data = Ponerinae_NO_data,
+    tip_data = Ponerinae_NO_tip_data,
+    nb_simulations = 100,
     trait_data_type = "biogeographic",
     BAMM_object = Ponerinae_BAMM_object_old_calib,
     focal_time = focal_time,
-    rate_type = "net_diversification",
-    return_perm_data = TRUE,
-    extract_diversification_data_melted_df = TRUE,
-    return_updated_trait_data_with_Map = TRUE,
+    uncertainty_strategy = "paired",
+    return_updated_Maps = TRUE,
     return_updated_BAMM_object = TRUE)
 
  ## Explore output
@@ -315,7 +322,8 @@ if (deepSTRAPP::is_dev_version())
  # ----- Example 3: With outputs over_time ----- #
 
  ## Load directly outputs from run_deepSTRAPP_over_time()
- data(Ponerinae_deepSTRAPP_biogeo_old_calib_0_40, package = "deepSTRAPP")
+ Ponerinae_deepSTRAPP_biogeo_old_calib_0_40 <- readRDS(system.file("extdata",
+    "Ponerinae_deepSTRAPP_biogeo_old_calib_0_40.rds", package = "deepSTRAPP"))
  ## This dataset is only available in development versions installed from GitHub.
  # It is not available in CRAN versions.
  # Use remotes::install_github(repo = "MaelDore/deepSTRAPP") to get the latest development version.

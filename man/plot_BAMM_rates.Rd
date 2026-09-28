@@ -8,16 +8,16 @@ plot_BAMM_rates(
   BAMM_object,
   rate_type = "net_diversification",
   method = "phylogram",
-  add_regime_shifts = TRUE,
   configuration_type = "MAP",
   sample_index = 1,
-  adjust_size_to_prob = TRUE,
   regimes_fill = "grey",
   regimes_size = 1,
   regimes_pch = 21,
   regimes_border_col = "black",
   regimes_border_width = 1,
   ...,
+  add_regime_shifts = TRUE,
+  adjust_size_to_prob = TRUE,
   display_plot = TRUE,
   PDF_file_path = NULL
 )
@@ -37,8 +37,6 @@ Must be one of 'speciation', 'extinction' or 'net_diversification' (default).}
 \item \code{method = "polar"} plots the phylogenetic tree using polar coordinates.
 }}
 
-\item{add_regime_shifts}{Logical. Whether to add the location of regime shifts on the phylogeny (Step 2). Default is \code{TRUE}.}
-
 \item{configuration_type}{A character string specifying how to select the location of regime shifts across posterior samples.
 \itemize{
 \item \code{configuration_type = "MAP"}: Use the average locations recorded in posterior samples with the Maximum A Posteriori probability (MAP) configuration.
@@ -46,20 +44,16 @@ This regime shift configuration is the most frequent configuration among the pos
 This is the default option.
 \item \code{configuration_type = "MSC"}: Use the average locations recorded in posterior samples with the Maximum Shift Credibility (MSC) configuration.
 This regime shift configuration has the highest product of marginal probabilities across branches (See \code{\link[BAMMtools:maximumShiftCredibility]{BAMMtools::maximumShiftCredibility()}}).
-\item \code{configuration_type = "index"}: Use the configuration of a unique posterior sample those index is provided in \code{sample_index}.
+\item \code{configuration_type = "index"}: Use the configuration of a unique posterior sample whose index is provided in \code{sample_index}.
 }}
 
 \item{sample_index}{Integer. Index of the posterior samples to use to plot the location of regime shifts.
 Used only if \code{configuration_type = index}. Default = \code{1}.}
 
-\item{adjust_size_to_prob}{Logical. Whether to scale the size of the symbols showing the location of regime shifts according to
-the marginal shift probability of the shift happening on each location/branch. This will only works if there is an \verb{$MSP_tree} element
-summarizing the marginal shift probabilities across branches in the \code{BAMM_object}. Default is \code{TRUE}.}
-
 \item{regimes_fill}{Character string. Set the color of the background of the symbols showing the location of regime shifts.
 Equivalent to the \code{bg} argument in \code{\link[BAMMtools:addBAMMshifts]{BAMMtools::addBAMMshifts()}}. Default is \code{"grey"}.}
 
-\item{regimes_size}{Numerical. Set the size of the symbols showing the location of regime shifts.
+\item{regimes_size}{Numeric. Set the size of the symbols showing the location of regime shifts.
 Equivalent to the \code{cex} argument in \code{\link[BAMMtools:addBAMMshifts]{BAMMtools::addBAMMshifts()}}. Default is \code{1}.}
 
 \item{regimes_pch}{Integer. Set the shape of the symbols showing the location of regime shifts.
@@ -68,19 +62,33 @@ Equivalent to the \code{pch} argument in \code{\link[BAMMtools:addBAMMshifts]{BA
 \item{regimes_border_col}{Character string. Set the color of the border of the symbols showing the location of regime shifts.
 Equivalent to the \code{col} argument in \code{\link[BAMMtools:addBAMMshifts]{BAMMtools::addBAMMshifts()}}. Default is \code{"black"}.}
 
-\item{regimes_border_width}{Numerical. Set the width of the border of the symbols showing the location of regime shifts.
+\item{regimes_border_width}{Numeric. Set the width of the border of the symbols showing the location of regime shifts.
 Equivalent to the \code{lwd} argument in \code{\link[BAMMtools:addBAMMshifts]{BAMMtools::addBAMMshifts()}}. Default is \code{1}.}
 
-\item{...}{Additional graphical arguments to pass down to \code{\link[BAMMtools:plot]{BAMMtools::plot.bammdata()}}, \code{\link[BAMMtools:addBAMMshifts]{BAMMtools::addBAMMshifts()}}, and \code{\link[=par]{par()}}.}
+\item{...}{Additional graphical arguments to pass down to \code{\link[BAMMtools:plot]{BAMMtools::plot.bammdata()}}, \code{\link[BAMMtools:addBAMMshifts]{BAMMtools::addBAMMshifts()}}, and \code{\link[=par]{par()}}.
+Among them, \code{par.reset} is ignored, with a message: it would make \code{\link[BAMMtools:plot]{BAMMtools::plot.bammdata()}}
+restore a full par() snapshot, discarding the coordinate system of the phylogeny and rewinding
+the panel counter of a multi-panel layout. Graphical parameters are instead restored by
+\code{plot_BAMM_rates()} when it exits: every parameter the call actually changed is put back, except
+those describing the plot itself, which are kept so that the phylogeny can be annotated
+afterwards with for instance \code{\link[graphics:abline]{graphics::abline()}} or \code{\link[graphics:title]{graphics::title()}}, as in the examples.}
+
+\item{add_regime_shifts}{Logical. Whether to add the location of regime shifts on the phylogeny (Step 2). Default is \code{TRUE}.
+Provide the full argument name to avoid ambiguity with the \code{add} graphical argument.}
+
+\item{adjust_size_to_prob}{Logical. Whether to scale the size of the symbols showing the location of regime shifts according to
+the marginal shift probability of the shift happening on each location/branch. This will only work if there is an \verb{$MSP_tree} element
+summarizing the marginal shift probabilities across branches in the \code{BAMM_object}. Default is \code{TRUE}.
+Provide the full argument name to avoid ambiguity with the \code{adj} graphical argument.}
 
 \item{display_plot}{Logical. Whether to display the plot generated in the R console. Default is \code{TRUE}.}
 
 \item{PDF_file_path}{Character string. If provided, the plot will be saved in a PDF file following the path provided here. The path must end with ".pdf".}
 }
 \value{
-The function returns (invisibly) a list with three three elements similarly to \code{\link[BAMMtools:plot]{BAMMtools::plot.bammdata()}}.
+The function returns (invisibly) a list with three elements similarly to \code{\link[BAMMtools:plot]{BAMMtools::plot.bammdata()}}.
 \itemize{
-\item \verb{$coords}: A matrix of plot coordinates. Rows correspond to branches. Columns 1-2 are starting (x,y) coordinates of each branch and columns 3-4 are ending (x,y) coordinates of each branch. If method = "polar" a fifth column gives the angle(in radians) of each branch.
+\item \verb{$coords}: A matrix of plot coordinates. Rows correspond to branches. Columns 1-2 are starting (x,y) coordinates of each branch and columns 3-4 are ending (x,y) coordinates of each branch. If method = "polar" a fifth column gives the angle (in radians) of each branch.
 \item \verb{$colorbreaks}: A vector of percentiles used to group macroevolutionary rates into color bins.
 \item \verb{$colordens}: A matrix of the kernel density estimates (column 2) of evolutionary rates (column 1) and the color (column 3) corresponding to each rate value.
 }
@@ -88,8 +96,8 @@ The function returns (invisibly) a list with three three elements similarly to \
 \description{
 Plot on a time-calibrated phylogeny the evolution of diversification rates and
 the location of regime shifts estimated from a BAMM (Bayesian Analysis of Macroevolutionary Mixtures).
-Each branch is colored accroding to the estimated rates of speciation, extinction, or net diversification
-stored in an object of class \code{bammdata}. Rates can vary along time, thus colors evolved along individual branches.
+Each branch is colored according to the estimated rates of speciation, extinction, or net diversification
+stored in an object of class \code{"bammdata"}. Rates can vary along time, thus colors evolve along individual branches.
 
 This function is a wrapper of original functions from the R package \code{{BAMMtools}}:
 \itemize{
@@ -99,15 +107,15 @@ This function is a wrapper of original functions from the R package \code{{BAMMt
 }
 \details{
 The main input \code{BAMM_object} is the typical output of \code{\link[=prepare_diversification_data]{prepare_diversification_data()}}.
-It provides information on rates and regimes shifts across the posterior samples of a BAMM.
+It provides information on rates and regime shifts across the posterior samples of a BAMM.
 
 \verb{$MAP_BAMM_object} and \verb{$MSC_BAMM_object} elements are required to plot regime shift locations following the
 "MAP" or "MSC" \code{configuration_type} respectively.
-A \verb{$MSP_tree} element is required to scale the size of the symbols showing the location of regime shifts according marginal shift probabilities.
+A \verb{$MSP_tree} element is required to scale the size of the symbols showing the location of regime shifts according to marginal shift probabilities.
 (If \code{adjust_size_to_prob = TRUE}).
 
 The default option to display regime shift is to use the average locations from the posterior samples with the Maximum A Posteriori probability (MAP) configuration.
-However, sometimes, multiple configurations have similarly high frequency in the posterior samples (See \code{\link[BAMMtools:credibleShiftSet]{BAMMtools::credibleShiftSet()}}.
+However, sometimes, multiple configurations have similarly high frequency in the posterior samples (See \code{\link[BAMMtools:credibleShiftSet]{BAMMtools::credibleShiftSet()}}).
 An alternative is to use the average locations from posterior samples with the Maximum Shift Credibility (MSC) configuration instead.
 This regime shift configuration has the highest product of marginal probabilities across branches where a shift is estimated.
 It may differ from the MAP configuration. (See \code{\link[BAMMtools:maximumShiftCredibility]{BAMMtools::maximumShiftCredibility()}}).
@@ -116,29 +124,50 @@ It may differ from the MAP configuration. (See \code{\link[BAMMtools:maximumShif
 # Load BAMM output
 data(whale_BAMM_object, package = "deepSTRAPP")
 
+mfrow_ini <- par()$mfrow
+par(mfrow = c(1,2))
+
 ## Plot overall mean rates with MAP configuration for regime shifts
-# (rates are averaged only all posterior samples)
-plot_BAMM_rates(whale_BAMM_object, add_regime_shifts = TRUE,
-                configuration_type = "MAP", bg = "black",
-                regimes_size = 3)
+# (rates are averaged across all posterior samples)
+plot_BAMM_rates(whale_BAMM_object, # Use the full object to plot mean overall rates
+                add_regime_shifts = TRUE,
+                configuration_type = "MAP",
+                regimes_size = 3, bg = "black")
+title("Overall mean - MAP shift config", col.main = "white")
+
 ## Plot overall mean rates with MSC configuration for regime shifts
-# (rates are averaged only all posterior samples)
+# (rates are averaged across all posterior samples)
 plot_BAMM_rates(whale_BAMM_object, add_regime_shifts = TRUE,
-                configuration_type = "MSC", bg = "black",
-                regimes_size = 3)
+                configuration_type = "MSC",
+                regimes_size = 3, bg = "black")
+title("Overall mean - MSC shift config", col.main = "white")
+
+par(mfrow_ini)
+
+
+mfrow_ini <- par()$mfrow
+par(mfrow = c(1,2))
 
 ## Plot mean MAP rates with regime shifts
 # (rates are averaged only across MAP samples)
-plot_BAMM_rates(whale_BAMM_object$MAP_BAMM_object, add_regime_shifts = TRUE,
+plot_BAMM_rates(whale_BAMM_object$MAP_BAMM_object, # Use the MAP object to plot mean MAP rates
+                add_regime_shifts = TRUE,
                 configuration_type = "index",
-                # Set to index to use the regime shift data from the '$MAP_BAMM_object'
-                regimes_size = 3, bg = "black")
-## Plot mean MSC rates (rates averaged only across MSC samples) with regime shifts
+                # Set to index to use the regime shift location from MAP configuration
+                regimes_size = 3)
+title("MAP mean - MAP shift config")
+
+## Plot mean MSC rates with regime shifts
 # (rates averaged only across MSC samples)
-plot_BAMM_rates(whale_BAMM_object$MSC_BAMM_object, add_regime_shifts = TRUE,
+plot_BAMM_rates(whale_BAMM_object$MSC_BAMM_object, # Use the MSC object to plot mean MSC rates
+                add_regime_shifts = TRUE,
                 configuration_type = "index",
-                # Set to index to use the regime shift data from the '$MSC_BAMM_object'
-                regimes_size = 3, bg = "black")
+                # Set to index to use the regime shift data from MSC configuration
+                regimes_size = 3)
+title("MSC mean - MSC shift config")
+
+par(mfrow_ini)
+
 
 }
 \seealso{

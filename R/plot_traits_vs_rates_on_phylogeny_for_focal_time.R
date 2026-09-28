@@ -5,14 +5,14 @@
 #'   * Left facet: plot the evolution of trait data/geographic ranges on the left time-calibrated phylogeny.
 #'     - For continuous data: Each branch is colored according to the estimates value of the traits.
 #'     - For categorical and biogeographic data: Each branch is colored according to the posterior probability
-#'       of being in a given state/range. Color for each state/range are overlaid using transparency
+#'       of being in a given state/range. Colors for each state/range are overlaid using transparency
 #'       to produce a single plot for all states/ranges.
-#'   * Right facet: plot the evolution of diversification rates and location of regime shits estimated from a BAMM
+#'   * Right facet: plot the evolution of diversification rates and location of regime shifts estimated from a BAMM
 #'   (Bayesian Analysis of Macroevolutionary Mixtures).
 #'   Each branch is colored according to the estimated rates of speciation, extinction, or net diversification
-#'   stored in an object of class `bammdata`. Rates can vary along time, thus colors evolved along individual branches.
+#'   stored in an object of class `"bammdata"`. Rates can vary along time, thus colors evolve along individual branches.
 #'
-#'   This function is a wrapper multiple plotting functions:
+#'   This function is a wrapper of multiple plotting functions:
 #'
 #'   * For continuous traits: [deepSTRAPP::plot_contMap()]
 #'   * For categorical and biogeographic data: [deepSTRAPP::plot_densityMaps_overlay()]
@@ -22,18 +22,20 @@
 #'   that summarize the results of a STRAPP test for a specific time in the past (i.e. the `focal_time`).
 #'   `deepSTRAPP_outputs` can also be extracted from the output of [deepSTRAPP::run_deepSTRAPP_over_time()] that
 #'   run the whole deepSTRAPP workflow over multiple time-steps.
-#' @param focal_time Numerical. (Optional) If `deepSTRAPP_outputs` comprises results over multiple time-steps
+#'   This must contain an updated `contMap`/`densityMaps` and updated `BAMM_object` (see Details section below).
+#' @param focal_time Numeric. (Optional) If `deepSTRAPP_outputs` comprises results over multiple time-steps
 #'   (i.e., output of [deepSTRAPP::run_deepSTRAPP_over_time()], this is the time of the STRAPP test targeted for plotting.
-#' @param color_scale Vector of character string. List of colors to use to build the color scale with [grDevices::colorRampPalette()]
+#' @param color_scale Character vector. List of colors to use to build the color scale with [grDevices::colorRampPalette()]
 #'   showing the evolution of a continuous trait. From lowest values to highest values. (For continuous trait data only)
 #' @param colors_per_levels Named character string. To set the colors to use to map each state/range posterior probabilities. Names = states/ranges; values = colors.
-#'   If `NULL` (default), the color scale provided `densityMaps` will be used. (For categorical and biogeographic data only)
+#'   If `NULL` (default), the color scale provided in `densityMaps` will be used. (For categorical and biogeographic data only)
 #' @param add_ACE_pies Logical. Whether to add pies of posterior probabilities of states/ranges at internal nodes on the mapped phylogeny. Default = `TRUE`.
-#' @param cex_pies Numerical. To adjust the size of the ACE pies. Default = `0.5`.
+#' @param cex_pies Numeric. To adjust the size of the ACE pies. Default = `0.5`.
+#'   Provide the full argument name to avoid ambiguity with the `cex` graphical argument.
 #' @param rate_type A character string specifying the type of diversification rates to plot.
 #'   Must be one of 'speciation', 'extinction' or 'net_diversification' (default).
 #' @param keep_initial_colorbreaks Logical. Whether to keep the same color breaks as used for the most recent focal time. Typically, the current time (t = 0).
-#'   This will only works if you provide the output of [deepSTRAPP::run_deepSTRAPP_over_time()] as `deepSTRAPP_outputs`. Default = `FALSE`.
+#'   This will only work if you provide the output of [deepSTRAPP::run_deepSTRAPP_over_time()] as `deepSTRAPP_outputs`. Default = `FALSE`.
 #' @param add_regime_shifts Logical. Whether to add the location of regime shifts on the phylogeny (Step 2). Default is `TRUE`.
 #' @param configuration_type A character string specifying how to select the location of regime shifts across posterior samples.
 #'   * `configuration_type = "MAP"`: Use the average locations recorded in posterior samples with the Maximum A Posteriori probability (MAP) configuration.
@@ -41,24 +43,26 @@
 #'     This is the default option.
 #'   * `configuration_type = "MSC"`: Use the average locations recorded in posterior samples with the Maximum Shift Credibility (MSC) configuration.
 #'     This regime shift configuration has the highest product of marginal probabilities across branches (See [BAMMtools::maximumShiftCredibility()]).
-#'   * `configuration_type = "index"`: Use the configuration of a unique posterior sample those index is provided in `sample_index`.
+#'   * `configuration_type = "index"`: Use the configuration of a unique posterior sample whose index is provided in `sample_index`.
 #' @param sample_index Integer. Index of the posterior samples to use to plot the location of regime shifts.
 #'   Used only if `configuration_type = index`. Default = `1`.
 #' @param adjust_size_to_prob Logical. Whether to scale the size of the symbols showing the location of regime shifts according to
-#'   the marginal shift probability of the shift happening on each location/branch. This will only works if there is an `$MSP_tree` element
+#'   the marginal shift probability of the shift happening on each location/branch. This will only work if there is an `$MSP_tree` element
 #'   summarizing the marginal shift probabilities across branches in the `BAMM_object`. Default is `TRUE`.
+#'   Provide the full argument name to avoid ambiguity with the `adj` graphical argument.
 #' @param regimes_fill Character string. Set the color of the background of the symbols showing the location of regime shifts.
 #'   Equivalent to the `bg` argument in [BAMMtools::addBAMMshifts()]. Default is `"grey"`.
-#' @param regimes_size Numerical. Set the size of the symbols showing the location of regime shifts.
+#' @param regimes_size Numeric. Set the size of the symbols showing the location of regime shifts.
 #'   Equivalent to the `cex` argument in [BAMMtools::addBAMMshifts()]. Default is `1`.
 #' @param regimes_pch Integer. Set the shape of the symbols showing the location of regime shifts.
 #'   Equivalent to the `pch` argument in [BAMMtools::addBAMMshifts()]. Default is `21`.
 #' @param regimes_border_col Character string. Set the color of the border of the symbols showing the location of regime shifts.
 #'   Equivalent to the `col` argument in [BAMMtools::addBAMMshifts()]. Default is `"black"`.
-#' @param regimes_border_width Numerical. Set the width of the border of the symbols showing the location of regime shifts.
+#' @param regimes_border_width Numeric. Set the width of the border of the symbols showing the location of regime shifts.
 #'   Equivalent to the `lwd` argument in [BAMMtools::addBAMMshifts()]. Default is `1`.
 #' @param ... Additional graphical arguments to pass down to [phytools::plot.contMap()], [phytools::plotSimmap()],
 #'   [deepSTRAPP::plot_densityMaps_overlay()], [BAMMtools::plot.bammdata()], [BAMMtools::addBAMMshifts()], and [par()].
+#'   If provided, `par.reset` is ignored with a message. See [deepSTRAPP::plot_BAMM_rates()] for details.
 #' @param display_plot Logical. Whether to display the plot generated in the R console. Default is `TRUE`.
 #' @param PDF_file_path Character string. If provided, the plot will be saved in a PDF file following the path provided here. The path must end with ".pdf".
 #'
@@ -68,24 +72,25 @@
 #'
 #' @details The main input `deepSTRAPP_outputs` is the typical output of [deepSTRAPP::run_deepSTRAPP_for_focal_time()].
 #'   It provides information on results of a STRAPP test performed at a given `focal_time`, and can also encompass
-#'   updated phylogenies with mapped trait evolution and diversification rates and regimes shifts if appropriate arguments are set.
+#'   updated phylogenies with mapped trait evolution and diversification rates and regime shifts if appropriate arguments are set.
 #'
-#'   * `return_updated_trait_data_with_Map` must be set to `TRUE` so that the trait data extracted for the given `focal_time`
-#'     and the updated version of mapped phylogeny (`contMap`/`densityMaps`) are returned among the outputs under `$updated_trait_data_with_Map`.
-#'     The updated `contMap`/`densityMaps` consists in cutting off branches and mappings that are younger than the `focal_time`.
+#'   * `return_updated_Maps` must be set to `TRUE` so that the updated version of mapped phylogeny (`contMap`/`densityMaps`)
+#'     for the given `focal_time` is returned among the outputs under `$updated_Maps`.
+#'     The update of the `contMap`/`densityMaps` consists of cutting off branches and mappings that are younger than the `focal_time`.
+#'     `contMap`/`densityMaps` must have been provided among the inputs to [deepSTRAPP::run_deepSTRAPP_for_focal_time()] in the first place.
 #'   * `return_updated_BAMM_object` must be set to `TRUE` so that the `updated_BAMM_object` with phylogeny and mapped diversification rates
 #'     cut-off at the `focal_time` are returned among the outputs under `$updated_BAMM_object`.
 #'
 #'   `$MAP_BAMM_object` and `$MSC_BAMM_object` elements are required in `$updated_BAMM_object` to plot regime shift locations following the
 #'   "MAP" or "MSC" `configuration_type` respectively.
-#'   A `$MSP_tree` element is required to scale the size of the symbols showing the location of regime shifts according marginal shift probabilities.
+#'   A `$MSP_tree` element is required to scale the size of the symbols showing the location of regime shifts according to marginal shift probabilities.
 #'   (If `adjust_size_to_prob = TRUE`).
 #'
 #'   Alternatively, the main input `deepSTRAPP_outputs` can be the output of [deepSTRAPP::run_deepSTRAPP_over_time()],
 #'   providing results of STRAPP tests over multiple time-steps. In this case, you must provide a `focal_time` to select the
 #'   unique time-step used for plotting.
-#'   * `return_updated_trait_data_with_Map` must be set to `TRUE` so that the trait data extracted and
-#'     the updated version of mapped phylogenies (`contMap`/`densityMaps`) are returned among the outputs under `$updated_trait_data_with_Map_over_time`.
+#'   * `return_updated_Maps` must be set to `TRUE` so that the updated version of mapped phylogenies (`contMap`/`densityMaps`)
+#'      are returned among the outputs under `$updated_Maps_over_time`.
 #'   * `return_updated_BAMM_object` must be set to `TRUE` so that the `BAMM_objects` with phylogeny and mapped diversification rates
 #'     cut-off at the specified time-steps are returned among the outputs under `$updated_BAMM_objects_over_time`.
 #'
@@ -137,7 +142,7 @@
 #'  \donttest{ # (May take several minutes to run)
 #'  # Run a Stochastic Mapping based on a Brownian Motion model
 #'  # to interpolate values along branches and obtain a "contMap" object
-#'  Ponerinae_contMap <- phytools::contMap(Ponerinae_tree, x = Ponerinae_cont_tip_data,
+#'  Ponerinae_contMap <- phytools::contMap(Ponerinae_tree_old_calib, x = Ponerinae_cont_tip_data,
 #'                                         res = 100, # Number of time steps
 #'                                         plot = FALSE)
 #'  # Plot contMap = stochastic mapping of continuous trait
@@ -156,10 +161,8 @@
 #'    trait_data_type = "continuous",
 #'    BAMM_object = Ponerinae_BAMM_object_old_calib,
 #'    focal_time = focal_time,
-#'    rate_type = "net_diversification",
-#'    return_perm_data = TRUE,
-#'    extract_diversification_data_melted_df = TRUE,
-#'    return_updated_trait_data_with_Map = TRUE,
+#'    uncertainty_strategy = "rates_only",
+#'    return_updated_Maps = TRUE,
 #'    return_updated_BAMM_object = TRUE)
 #'
 #'  ## Explore output
@@ -194,21 +197,26 @@
 #'  # No overlap in ranges
 #'  table(Ponerinae_binary_range_table$Old_World, Ponerinae_binary_range_table$New_World)
 #'
-#'  Ponerinae_NO_data <- stats::setNames(object = Ponerinae_binary_range_table$Old_World,
+#'  Ponerinae_NO_tip_data <- stats::setNames(object = Ponerinae_binary_range_table$Old_World,
 #'                                       nm = Ponerinae_binary_range_table$Taxa)
-#'  Ponerinae_NO_data <- as.character(Ponerinae_NO_data)
-#'  Ponerinae_NO_data[Ponerinae_NO_data == "TRUE"] <- "O" # O = Old World
-#'  Ponerinae_NO_data[Ponerinae_NO_data == "FALSE"] <- "N" # N = New World
-#'  names(Ponerinae_NO_data) <- Ponerinae_binary_range_table$Taxa
-#'  table(Ponerinae_NO_data)
+#'  Ponerinae_NO_tip_data <- as.character(Ponerinae_NO_tip_data)
+#'  Ponerinae_NO_tip_data[Ponerinae_NO_tip_data == "TRUE"] <- "O" # O = Old World
+#'  Ponerinae_NO_tip_data[Ponerinae_NO_tip_data == "FALSE"] <- "N" # N = New World
+#'  names(Ponerinae_NO_tip_data) <- Ponerinae_binary_range_table$Taxa
+#'  table(Ponerinae_NO_tip_data)
 #'
 #'  colors_per_levels <- c("mediumpurple2", "peachpuff2")
 #'  names(colors_per_levels) <- c("N", "O")
 #'
 #'  \donttest{ # (May take several minutes to run)
+#'
+#'  # Load ape and BioGeoBEARS to use models internally
+#'  library(ape)
+#'  library(BioGeoBEARS)
+#'
 #'  ## Run evolutionary models
 #'  Ponerinae_biogeo_data <- prepare_trait_data(
-#'      tip_data = Ponerinae_NO_data,
+#'      tip_data = Ponerinae_NO_tip_data,
 #'      trait_data_type = "biogeographic",
 #'      phylo = Ponerinae_tree_old_calib,
 #'      evolutionary_models = "DEC+J", # Default = "DEC" for biogeographic
@@ -237,14 +245,13 @@
 #'  Ponerinae_deepSTRAPP_biogeo_old_calib_10My <- run_deepSTRAPP_for_focal_time(
 #'     densityMaps = Ponerinae_biogeo_data_old_calib$densityMaps,
 #'     ace = Ponerinae_biogeo_data_old_calib$ace,
-#'     tip_data = Ponerinae_NO_data,
+#'     tip_data = Ponerinae_NO_tip_data,
+#'     nb_simulations = 100,
 #'     trait_data_type = "biogeographic",
 #'     BAMM_object = Ponerinae_BAMM_object_old_calib,
 #'     focal_time = focal_time,
-#'     rate_type = "net_diversification",
-#'     return_perm_data = TRUE,
-#'     extract_diversification_data_melted_df = TRUE,
-#'     return_updated_trait_data_with_Map = TRUE,
+#'     uncertainty_strategy = "paired",
+#'     return_updated_Maps = TRUE,
 #'     return_updated_BAMM_object = TRUE)
 #'
 #'  ## Explore output
@@ -264,7 +271,8 @@
 #'  # ----- Example 3: With outputs over_time ----- #
 #'
 #'  ## Load directly outputs from run_deepSTRAPP_over_time()
-#'  data(Ponerinae_deepSTRAPP_biogeo_old_calib_0_40, package = "deepSTRAPP")
+#'  Ponerinae_deepSTRAPP_biogeo_old_calib_0_40 <- readRDS(system.file("extdata",
+#'     "Ponerinae_deepSTRAPP_biogeo_old_calib_0_40.rds", package = "deepSTRAPP"))
 #'  ## This dataset is only available in development versions installed from GitHub.
 #'  # It is not available in CRAN versions.
 #'  # Use remotes::install_github(repo = "MaelDore/deepSTRAPP") to get the latest development version.
@@ -293,34 +301,41 @@ plot_traits_vs_rates_on_phylogeny_for_focal_time <- function (
     color_scale = NULL,
     colors_per_levels = NULL,
     add_ACE_pies = TRUE,
-    cex_pies = 0.5,
     rate_type = "net_diversification",
     keep_initial_colorbreaks = FALSE,
     add_regime_shifts = TRUE,
     configuration_type = "MAP", # MAP, MSC, or index
     sample_index = 1,
-    adjust_size_to_prob = TRUE, # To adjust size of points representing regime shifts to their marginal posterior probabilities
     regimes_fill = "grey", # Replace 'bg' argument in BAMMtools::addBAMMshifts()
     regimes_size = 1, # Replace 'cex' argument in BAMMtools::addBAMMshifts()
     regimes_pch = 21, # Replace 'pch' argument in BAMMtools::addBAMMshifts()
     regimes_border_col = "black", # Replace 'col' argument in BAMMtools::addBAMMshifts()
     regimes_border_width = 1, # Replace 'lwd' argument in BAMMtools::addBAMMshifts()
     ..., # To pass down to BAMMtools::plot.bammdata(), BAMMtools::addBAMMshifts(), and par()
+    cex_pies = 0.5, # Placed after ... so any 'cex' argument provided is not captured by 'cex_pies'
+    # To adjust size of points representing regime shifts to their marginal posterior probabilities
+    adjust_size_to_prob = TRUE, # Placed after ... so any 'adj' argument provided is not captured by 'djust_size_to_prob'
     display_plot = TRUE,
     PDF_file_path = NULL)
 {
   ### Check input validity
   {
     ## deepSTRAPP_outputs
-    # Check presence of updated trait map
-    if (is.null(deepSTRAPP_outputs$updated_trait_data_with_Map) & is.null(deepSTRAPP_outputs$updated_trait_data_with_Map_over_time))
+    # Check presence of STRAPP_results to extract $trait_data_type
+    if (is.null(deepSTRAPP_outputs$trait_data_type))
     {
-      stop(paste0("`deepSTRAPP_outputs` must have a `$updated_trait_data_with_Map` or `$updated_trait_data_with_Map_over_time` element.\n",
-                  "Be sure to set `return_updated_trait_data_with_Map = TRUE` in [deepSTRAPP::run_deepSTRAPP_for_focal_time] or [deepSTRAPP::run_deepSTRAPP_over_time].\n",
+      stop(paste0("`deepSTRAPP_outputs` must have a `$trait_data_type` element from which the type of trait data can be extracted.\n",
+                  "See [deepSTRAPP::run_deepSTRAPP_for_focal_time] or [deepSTRAPP::run_deepSTRAPP_over_time] to produce this type of objects."))
+    }
+    # Check presence of updated trait map
+    if (is.null(deepSTRAPP_outputs$updated_Maps) & is.null(deepSTRAPP_outputs$updated_Maps_over_time))
+    {
+      stop(paste0("`deepSTRAPP_outputs` must have a `$updated_Maps` or `$updated_Maps_over_time` element.\n",
+                  "Be sure to set `return_updated_Maps = TRUE` in [deepSTRAPP::run_deepSTRAPP_for_focal_time] or [deepSTRAPP::run_deepSTRAPP_over_time].\n",
                   "This element is needed to plot the updated `contMap`/`densityMaps` with mapped trait/range evolution."))
     }
     # Check presence of updated BAMM_object
-    if (is.null(deepSTRAPP_outputs$updated_trait_data_with_Map) & is.null(deepSTRAPP_outputs$updated_trait_data_with_Map_over_time))
+    if (is.null(deepSTRAPP_outputs$updated_BAMM_object) & is.null(deepSTRAPP_outputs$updated_BAMM_objects_over_time))
     {
       stop(paste0("'deepSTRAPP_outputs' must have a '$updated_BAMM_object' or '$updated_BAMM_objects_over_time' element.\n",
                   "Be sure to set `return_updated_BAMM_object = TRUE` in [deepSTRAPP::run_deepSTRAPP_for_focal_time] or [deepSTRAPP::run_deepSTRAPP_over_time].\n",
@@ -328,7 +343,7 @@ plot_traits_vs_rates_on_phylogeny_for_focal_time <- function (
     }
 
     ## Identify the type of inputs
-    if (is.null(deepSTRAPP_outputs$updated_trait_data_with_Map_over_time))
+    if (is.null(deepSTRAPP_outputs$updated_Maps_over_time))
     {
       inputs_over_time <- FALSE
     } else {
@@ -362,24 +377,39 @@ plot_traits_vs_rates_on_phylogeny_for_focal_time <- function (
                       "focal_time provided: ",focal_time,".\n",
                       "focal_time recorded in `deepSTRAPP_outputs`: ",deepSTRAPP_outputs$focal_time,"."))
         }
+      } else {
+        # If not provided, extract from deepSTRAPP_outputs
+        focal_time <- deepSTRAPP_outputs$focal_time
       }
     }
 
-    ## Extract updated_trait_data_with_Map & updated_BAMM_object
+    ## Extract updated_Maps & updated_BAMM_object
     if (!inputs_over_time)
     {
       # For outputs from run_deepSTRAPP_for_focal_time
-      updated_trait_data_with_Map <- deepSTRAPP_outputs$updated_trait_data_with_Map
+      updated_Maps <- deepSTRAPP_outputs$updated_Maps
       updated_BAMM_object <- deepSTRAPP_outputs$updated_BAMM_object
     } else {
       # For outputs from run_deepSTRAPP_over_time
       focal_time_ID <- which(deepSTRAPP_outputs$time_steps == focal_time)
-      updated_trait_data_with_Map <- deepSTRAPP_outputs$updated_trait_data_with_Map_over_time[[focal_time_ID]]
+      updated_Maps <- deepSTRAPP_outputs$updated_Maps_over_time[[focal_time_ID]]
       updated_BAMM_object <- deepSTRAPP_outputs$updated_BAMM_objects_over_time[[focal_time_ID]]
     }
 
     ## Extract the type of trait
-    trait_data_type <- updated_trait_data_with_Map$trait_data_type
+    trait_data_type <- deepSTRAPP_outputs$trait_data_type
+
+    ## Check that the type of Maps match the type of trait data
+    if (trait_data_type == "continuous" & is.null(updated_Maps$contMap))
+    {
+      stop(paste0("For 'continuous' traits, the '$updated_Maps' element must contains a 'contMap'.\n",
+                  "Please provide a 'contMap' among the inputs of [deepSTRAPP::run_deepSTRAPP_for_focal_time] or [deepSTRAPP::run_deepSTRAPP_over_time]."))
+    }
+    if (trait_data_type %in% c("categorical", "biogeographic") & is.null(updated_Maps$densityMaps))
+    {
+      stop(paste0("For 'categorical' traits or 'biogeographic' data, the '$updated_Maps' element must contains 'densityMaps'.\n",
+                  "Please provide 'densityMaps' among the inputs of [deepSTRAPP::run_deepSTRAPP_for_focal_time] or [deepSTRAPP::run_deepSTRAPP_over_time]."))
+    }
 
     ## Check color_scale or colors_per_levels are provided to appropriate trait type
     if ((trait_data_type == "continuous") & !is.null(colors_per_levels))
@@ -420,12 +450,42 @@ plot_traits_vs_rates_on_phylogeny_for_focal_time <- function (
     }
   }
 
-  ## Save initial par() and reassign them on exit
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar))
+  ## Restore, on exit, every graphical parameter that this call changed
+  # Everything is restored, whether it was set by this function, by the functions it calls, or
+  # passed by the user through '...'. The only exceptions are the parameters describing the plot
+  # that was just drawn: restoring those rewinds the panel counter of a multi-panel layout, and
+  # discards the coordinate system of the plot, which makes it impossible to annotate afterwards.
 
-  ## Extract focal time and nb_tips
-  focal_time <- updated_trait_data_with_Map$focal_time
+  # List graphical parameters describing the plot that now exists (Never to restore as they describe the current plot state)
+  plot_state_par_names <- c("usr", "plt", "fig", "mfg", "new", "xaxp", "yaxp", "pin")
+  # Save current graphic parameters
+  entry_par <- par(no.readonly = TRUE)
+
+  # On exit, compare changes in par and restore the ones that have change, but the plot_state_par
+  on.exit({
+    # List par on exit
+    exit_par <- par(no.readonly = TRUE)
+    # Identify differences with initial parameters
+    changed_par_names <- names(entry_par)[!vapply(X = names(entry_par),
+                                                  FUN = function (x) { isTRUE(all.equal(entry_par[[x]], exit_par[[x]])) },
+                                                  FUN.VALUE = logical(1))]
+    # Exclude plot state parameters from the restore
+    changed_par_names <- setdiff(changed_par_names, plot_state_par_names)
+    # Restore parameters if any has changed
+    if (length(changed_par_names) > 0)
+    {
+      par(entry_par[changed_par_names])
+    }
+
+    # Force new to FALSE, so the next plot calling plot.new() start on a new clean window,
+    # But only if we actually plot something
+    if (isTRUE(display_plot) || (isTRUE(exit_par$new) && !isTRUE(entry_par$new)))
+    {
+      par(new = FALSE)
+    }
+  }, add = TRUE)
+
+  ## Extract nb_tips
   nb_tips <- length(updated_BAMM_object$tip.label)
 
   ## Filter list of additional arguments to avoid warnings from par()
@@ -478,7 +538,7 @@ plot_traits_vs_rates_on_phylogeny_for_focal_time <- function (
   if ("ftype" %in% names(add_args_for_plotSimmap)) { ftype <- add_args_for_plotSimmap$ftype } else { ftype <- "reg" }
   if ("lwd" %in% names(add_args_for_plotSimmap)) { lwd <- add_args_for_plotSimmap$lwd } else { lwd <- 2 }
   if ("mar" %in% names(add_args_for_plotSimmap)) { mar <- add_args_for_plotSimmap$mar } else { mar <- graphics::par()$mar }
-  if ("tips" %in% names(add_args_for_plotSimmap)) { tips <- add_args_for_plotSimmap$tips } else { tips <- stats::setNames(object = 1:nb_tips, nm = updated_trait_data_with_Map$densityMaps[[1]]$tree$tip.label) }
+  if ("tips" %in% names(add_args_for_plotSimmap)) { tips <- add_args_for_plotSimmap$tips } else { tips <- stats::setNames(object = 1:nb_tips, nm = updated_Maps$densityMaps[[1]]$tree$tip.label) }
   add_args_for_plotSimmap <- add_args_for_plotSimmap[!(names(add_args_for_plotSimmap) %in% c("fsize", "ftype", "lwd", "mar", "tips"))]
 
   # List arguments for previous functions that are not used in plot_BAMM_rates
@@ -490,7 +550,7 @@ plot_traits_vs_rates_on_phylogeny_for_focal_time <- function (
   ### Display plots
   if (display_plot)
   {
-    initial_oma <- graphics::par()$oma
+    initial_par <- graphics::par("oma", "mfrow")
     graphics::par(mfrow = c(1, 2), oma = c(0, 0, 3, 0))
 
     ### Plot facet A: Trait evolution
@@ -499,12 +559,12 @@ plot_traits_vs_rates_on_phylogeny_for_focal_time <- function (
     {
       ## Case 1: Continuous traits and contMap
 
-      # plot_contMap(contMap = updated_trait_data_with_Map$contMap,
+      # plot_contMap(contMap = updated_Maps$contMap,
       #              color_scale = color_scale,
       #              ...) # May need to be filtered
 
       do.call(what = plot_contMap,
-              args = c(list(contMap = updated_trait_data_with_Map$contMap,
+              args = c(list(contMap = updated_Maps$contMap,
                             color_scale = color_scale,
                             lwd = lwd, outline = outline,
                             sig = sig, type = type, direction = direction,
@@ -515,7 +575,7 @@ plot_traits_vs_rates_on_phylogeny_for_focal_time <- function (
 
       ## Case 2: Categorical or biogeographic traits and densityMaps
 
-      # plot_densityMaps_overlay(densityMaps = updated_trait_data_with_Map$densityMaps,
+      # plot_densityMaps_overlay(densityMaps = updated_Maps$densityMaps,
       #                          colors_per_levels = colors_per_levels,
       #                          add_ACE_pies = add_ACE_pies,
       #                          cex_pies = cex_pies,
@@ -525,7 +585,7 @@ plot_traits_vs_rates_on_phylogeny_for_focal_time <- function (
       #                          ...) # May need to be filtered
 
       do.call(what = plot_densityMaps_overlay,
-              args = c(list(densityMaps = updated_trait_data_with_Map$densityMaps,
+              args = c(list(densityMaps = updated_Maps$densityMaps,
                             colors_per_levels = colors_per_levels,
                             add_ACE_pies = add_ACE_pies,
                             cex_pies = cex_pies,
@@ -578,7 +638,7 @@ plot_traits_vs_rates_on_phylogeny_for_focal_time <- function (
     main_title <- paste0("Focal time = ", focal_time)
     graphics::mtext(text = main_title, outer = TRUE, cex = 1.5, line = -1)
 
-    graphics::par(mfrow = c(1, 1), oma = initial_oma)
+    graphics::par(initial_par)
   }
 
   ## Save PDF
@@ -593,7 +653,7 @@ plot_traits_vs_rates_on_phylogeny_for_focal_time <- function (
     grDevices::pdf(file = file.path(PDF_file_path),
                   width = width, height = height)
 
-    initial_oma <- graphics::par()$oma
+    initial_par <- graphics::par("oma", "mfrow")
     top_outer_margin <- height * 0.20
     graphics::par(mfrow = c(1, 2), oma = c(0, 0, top_outer_margin, 0))
 
@@ -603,12 +663,12 @@ plot_traits_vs_rates_on_phylogeny_for_focal_time <- function (
     {
       ## Case 1: Continuous traits and contMap
 
-      # plot_contMap(contMap = updated_trait_data_with_Map$contMap,
+      # plot_contMap(contMap = updated_Maps$contMap,
       #              color_scale = color_scale,
       #              ...) # May need to be filtered
 
       do.call(what = plot_contMap,
-              args = c(list(contMap = updated_trait_data_with_Map$contMap,
+              args = c(list(contMap = updated_Maps$contMap,
                             color_scale = color_scale,
                             lwd = lwd, outline = outline,
                             sig = sig, type = type, direction = direction,
@@ -619,7 +679,7 @@ plot_traits_vs_rates_on_phylogeny_for_focal_time <- function (
 
       ## Case 2: Categorical or biogeographic traits and densityMaps
 
-      # plot_densityMaps_overlay(densityMaps = updated_trait_data_with_Map$densityMaps,
+      # plot_densityMaps_overlay(densityMaps = updated_Maps$densityMaps,
       #                          colors_per_levels = colors_per_levels,
       #                          add_ACE_pies = add_ACE_pies,
       #                          cex_pies = cex_pies,
@@ -629,7 +689,7 @@ plot_traits_vs_rates_on_phylogeny_for_focal_time <- function (
       #                          ...) # May need to be filtered
 
       do.call(what = plot_densityMaps_overlay,
-              args = c(list(densityMaps = updated_trait_data_with_Map$densityMaps,
+              args = c(list(densityMaps = updated_Maps$densityMaps,
                             colors_per_levels = colors_per_levels,
                             add_ACE_pies = add_ACE_pies,
                             cex_pies = cex_pies,
@@ -683,7 +743,7 @@ plot_traits_vs_rates_on_phylogeny_for_focal_time <- function (
     base_cex = width/12 # Scale the size of the text relative to PDF size so it appears constant
     graphics::mtext(text = main_title, outer = TRUE, cex = base_cex*1.3, line = 0)
 
-    graphics::par(mfrow = c(1, 1), oma = initial_oma)
+    graphics::par(initial_par)
 
     ## Close PDF
     invisible(grDevices::dev.off())

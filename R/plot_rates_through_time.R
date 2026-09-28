@@ -1,6 +1,6 @@
 ## Functions to plot rates through time in relation with trait values
-# One master function to prepare data and select the proper test function according to data type
-# Three sub-functions carrying out tests according to data type
+# One master function to prepare data and select the proper plotting function according to data type
+# Three sub-functions carrying out plots according to data type
 
 #' @title Plot evolution of diversification rates in relation to trait values over time
 #'
@@ -21,15 +21,15 @@
 #'   Even if the `deepSTRAPP_outputs` object was generated with [deepSTRAPP::run_deepSTRAPP_over_time()]
 #'   for testing another type of rates, the `$trait_data_df_over_time` and `$diversification_data_df_over_time` data frames
 #'   will contain data for all types of rates.
-#' @param quantile_ranges Vector of numerical. Only for continuous trait data. Quantiles used as thresholds to group branches
+#' @param quantile_ranges Numeric vector. Only for continuous trait data. Quantiles used as thresholds to group branches
 #'  by trait values. It must start with 0 and finish with 1. Default is `c(0, 0.25, 0.5, 0.75, 1.0)`
 #'  which produces four balanced quantile groups.
 #' @param select_trait_levels (Vector of) character string. Only for categorical and biogeographic trait data.
 #'  To provide a list of a subset of states/ranges to plot. Names must match the ones found in
 #'  `deepSTRAPP_outputs$trait_data_df_over_time$trait_value`. Default is `all` which means all states/ranges will be plotted.
-#' @param time_range Vector of two numerical values. Time boundaries used for the plot.
+#' @param time_range Numeric vector of length 2. Time boundaries used for the plot.
 #'   If `NULL` (the default), the range of data provided in `deepSTRAPP_outputs` will be used.
-#' @param color_scale Vector of character string. List of colors to use to build the color scale with [grDevices::colorRampPalette()]
+#' @param color_scale Character vector. List of colors to use to build the color scale with [grDevices::colorRampPalette()]
 #'   to display the quantile groups used to discretize the continuous trait data. From lowest values to highest values. Only for continuous data.
 #'   Default = `NULL` will use the 'Spectral' color palette in [RColorBrewer::brewer.pal()].
 #' @param colors_per_levels Named character string. To set the colors to use to plot rates of each state/range. Names = states/ranges; values = colors.
@@ -39,18 +39,20 @@
 #'  * `fuzzy` (default): to overlay the evolution of rates found in all posterior samples with high transparency levels.
 #'  * `quantiles_rect`: to add a polygon encompassing a proportion of the rate values found in posterior samples.
 #'   This proportion is defined with `CI_quantiles`.
-#' @param CI_quantiles Numerical. Proportion of rate values across posterior samples encompassed by the confidence interval. Only if `CI_type = "quantiles_rect"`. Default is `0.95`.
+#' @param CI_quantiles Numeric. Proportion of rate values across posterior samples encompassed by the confidence interval. Only if `CI_type = "quantiles_rect"`. Default is `0.95`.
 #' @param display_plot Logical. Whether to display the plot generated in the R console. Default is `TRUE`.
 #' @param PDF_file_path Character string. If provided, the plot will be saved in a PDF file following the path provided here. The path must end with ".pdf".
 #' @param return_mean_data_per_samples_df Logical. Whether to include in the output the data.frame of mean rates per trait values computed for
-#'   each posterior sample at each time-step (aggregated across groups of branches based on trait data). This is used to draw the confidence interval. Default is `FALSE`.
+#'   each stochastic map X BAMM posterior sample at each time-step (aggregated across groups of branches based on trait data). This is used to draw the confidence interval. Default is `FALSE`.
 #' @param return_median_data_across_samples_df Logical. Whether to include in the output the data.frame of median rates per trait values
-#'  across posterior samples computed for at each time-step (aggregated across groups of branches based on trait data AND posterior samples).
-#'  This is used to draw the lines on the plot. Default is `FALSE`.
+#'  across stochastic maps X BAMM posterior samples computed at each time-step (aggregated across groups of branches based on trait data AND stochastic maps X BAMM posterior samples).
+#'  This is used to draw the median lines on the plot. Default is `FALSE`.
+#' @param verbose Logical. Should progression be displayed? Default is `TRUE`.
 #'
 #' @export
 #' @importFrom ggplot2 ggplot geom_line aes geom_hline geom_polygon scale_y_continuous scale_x_continuous scale_color_discrete scale_color_brewer scale_fill_brewer xlab ylab ggtitle theme element_line element_rect element_text unit margin
 #' @importFrom dplyr left_join join_by group_by reframe summarise ungroup mutate arrange select filter
+#' @importFrom rlang expr eval_tidy sym
 #' @importFrom cowplot save_plot
 #' @importFrom stringr str_to_title
 #' @importFrom stats quantile
@@ -61,15 +63,15 @@
 #'
 #'   * `rates_TT_ggplot` An object of classes `gg` and `ggplot`. This is a ggplot that can be displayed
 #'     on the console with `print(output$rates_TT_ggplot)`. It corresponds to the plot being displayed on the console
-#'     when the function is run, if `display_plot = TRUE`, and can be further modify for aesthetics using the ggplot2 grammar.
+#'     when the function is run, if `display_plot = TRUE`, and can be further modified for aesthetics using the ggplot2 grammar.
 #'
 #'   Optional summary data frames:
-#'   * `mean_data_per_samples_df` A data.frame with four columns providing the `$mean_rates` observed along branches
+#'   * `mean_data_per_samples_df` A data.frame with five columns providing the `$mean_rates` observed along branches
 #'     with a similar `$trait_value` (if categorical or biogeographic) or falling into the same `$quantile_ranges`.
-#'     Data are extracted for each posterior sample (`$BAMM_sample_ID`) at each time-step (i.e., `$focal_time`).
+#'     Data are extracted for each stochastic map (`$Map_ID`) X BAMM posterior sample (`$BAMM_sample_ID`) used for the STRAPP tests at each time-step (i.e., `$focal_time`).
 #'     This is used to draw the confidence interval. Included if `return_mean_data_per_samples_df = TRUE`.
 #'   * `$median_data_across_samples_df` A data.frame with three columns providing the `$median_rates`
-#'     observed across all posterior samples in `$mean_data_per_samples_df`. This is used to draw the lines on the plot.
+#'     observed across all stochastic maps X BAMM posterior samples used for the STRAPP tests in `$mean_data_per_samples_df`. This is used to draw the lines on the plot.
 #'     Included if `return_median_data_across_samples_df = TRUE`.
 #'
 #'   If a `PDF_file_path` is provided, the function will also generate a PDF file of the plot.
@@ -87,7 +89,8 @@
 #' if (deepSTRAPP::is_dev_version())
 #' {
 #'   ## Load results of run_deepSTRAPP_over_time()
-#'   data(Ponerinae_deepSTRAPP_cont_old_calib_0_40, package = "deepSTRAPP")
+#'   Ponerinae_deepSTRAPP_cont_old_calib_0_40 <- readRDS(system.file("extdata",
+#'      "Ponerinae_deepSTRAPP_cont_old_calib_0_40.rds", package = "deepSTRAPP"))
 #'   ## This dataset is only available in development versions installed from GitHub.
 #'   # It is not available in CRAN versions.
 #'   # Use remotes::install_github(repo = "MaelDore/deepSTRAPP") to get the latest development version.
@@ -131,7 +134,8 @@
 #' if (deepSTRAPP::is_dev_version())
 #' {
 #'   ## Load results of run_deepSTRAPP_over_time()
-#'   data(Ponerinae_deepSTRAPP_cat_3lvl_old_calib_0_40, package = "deepSTRAPP")
+#'   Ponerinae_deepSTRAPP_cat_3lvl_old_calib_0_40 <- readRDS(system.file("extdata",
+#'      "Ponerinae_deepSTRAPP_cat_3lvl_old_calib_0_40.rds", package = "deepSTRAPP"))
 #'   ## This dataset is only available in development versions installed from GitHub.
 #'   # It is not available in CRAN versions.
 #'   # Use remotes::install_github(repo = "MaelDore/deepSTRAPP") to get the latest development version.
@@ -174,7 +178,8 @@
 #' if (deepSTRAPP::is_dev_version())
 #' {
 #'   ## Load results of run_deepSTRAPP_over_time()
-#'   data(Ponerinae_deepSTRAPP_biogeo_old_calib_0_40, package = "deepSTRAPP")
+#'   Ponerinae_deepSTRAPP_biogeo_old_calib_0_40 <- readRDS(system.file("extdata",
+#'      "Ponerinae_deepSTRAPP_biogeo_old_calib_0_40.rds", package = "deepSTRAPP"))
 #'   ## This dataset is only available in development versions installed from GitHub.
 #'   # It is not available in CRAN versions.
 #'   # Use remotes::install_github(repo = "MaelDore/deepSTRAPP") to get the latest development version.
@@ -229,7 +234,8 @@ plot_rates_through_time <- function (
     display_plot = TRUE,
     PDF_file_path = NULL,
     return_mean_data_per_samples_df = FALSE,
-    return_median_data_across_samples_df = FALSE
+    return_median_data_across_samples_df = FALSE,
+    verbose = TRUE
 )
 {
   ### Check input validity
@@ -251,6 +257,26 @@ plot_rates_through_time <- function (
                   "Especially, check if you used 'extract_diversification_data_melted_df = TRUE' to save the summary data.frame of diversification rates ",
                   "found along branches at each time-step, needed for the RTT plot."))
     }
+    # deepSTRAPP_outputs must have element $uncertainty_strategy
+    if (is.null(deepSTRAPP_outputs$uncertainty_strategy))
+    {
+      stop(paste0("'$uncertainty_strategy' is missing from 'deepSTRAPP_outputs'. This information is needed to assign trait data to diversification data in accordance to the strategy used for the test.\n",
+                  "You can inspect the structure of the input object with 'str(deepSTRAPP_outputs, 1)'.\n",
+                  "See ?deepSTRAPP::run_deepSTRAPP_over_time() to learn how to generate those objects."))
+    }
+    if (!(deepSTRAPP_outputs$uncertainty_strategy %in% c("rates_only", "paired", "full")))
+    {
+      stop(paste0("'deepSTRAPP_outputs$uncertainty_strategy' must be either 'rates_only', 'paired', or 'full'.\n",
+                  "This information is needed to assign trait data to diversification data in accordance to the strategy used for the test.\n",
+                  "See ?deepSTRAPP::run_deepSTRAPP_over_time() to learn how to generate those objects."))
+    }
+    # deepSTRAPP_outputs must have element $trait_maps_vs_BAMM_samples_list
+    if (is.null(deepSTRAPP_outputs$trait_maps_vs_BAMM_samples_list))
+    {
+      stop(paste0("'$trait_maps_vs_BAMM_samples_list' is missing from 'deepSTRAPP_outputs'. This information is needed to assign trait data to diversification data in accordance to the strategy used for the test.\n",
+                  "You can inspect the structure of the input object with 'str(deepSTRAPP_outputs, 2)'.\n",
+                  "See ?deepSTRAPP::run_deepSTRAPP_over_time() to learn how to generate those objects."))
+    }
 
     ## rate_type must be either "speciation", "extinction" or "net_diversification"
     if (!(rate_type %in% c("speciation", "extinction", "net_diversification")))
@@ -264,12 +290,12 @@ plot_rates_through_time <- function (
       # Check that two values are provided for time_range
       if (length(time_range) != 2)
       {
-        stop(paste0("'time_range' must be a vector of two positive numerical values providing the time boundaries used for the plot."))
+        stop(paste0("'time_range' must be a vector of two positive numeric values providing the time boundaries used for the plot."))
       }
       # Check that time_range is strictly positive
       if (!identical(time_range, abs(time_range)))
       {
-        stop(paste0("'time_range' must be strictly positive numerical values providing the time boundaries used for the plot."))
+        stop(paste0("'time_range' must be strictly positive numeric values providing the time boundaries used for the plot."))
       }
       # Ensure that time_range are properly ordered in increasing values
       time_range <- range(time_range)
@@ -295,7 +321,7 @@ plot_rates_through_time <- function (
     }
 
     ## CI_quantiles
-    # CI_quantiles should be a numerical between 0 and 1
+    # CI_quantiles should be a numeric between 0 and 1
     if ((CI_quantiles < 0) | (CI_quantiles > 1))
     {
       stop(paste0("'CI_quantiles' reflects the proportion of rate values encompass by the confidence interval.\n",
@@ -316,9 +342,36 @@ plot_rates_through_time <- function (
     ## Other checks are carried in dedicated sub-functions
   }
 
-  ## Save initial par() and reassign them on exit
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar))
+  ## Save the graphical parameters on entry and, on exit, restore only those this function actually changed.
+
+  # List graphical parameters describing the plot that now exists (Never to restore as they describe the current plot state)
+  plot_state_par_names <- c("usr", "plt", "fig", "mfg", "new", "xaxp", "yaxp", "pin")
+  # Save current graphic parameters
+  entry_par <- par(no.readonly = TRUE)
+
+  # On exit, compare changes in par and restore the ones that have change, but the plot_state_par
+  on.exit({
+    # List par on exit
+    exit_par <- par(no.readonly = TRUE)
+    # Identify differences with initial parameters
+    changed_par_names <- names(entry_par)[!vapply(X = names(entry_par),
+                                                  FUN = function (x) { isTRUE(all.equal(entry_par[[x]], exit_par[[x]])) },
+                                                  FUN.VALUE = logical(1))]
+    # Exclude plot state parameters from the restore
+    changed_par_names <- setdiff(changed_par_names, plot_state_par_names)
+    # Restore parameters if any has changed
+    if (length(changed_par_names) > 0)
+    {
+      par(entry_par[changed_par_names])
+    }
+
+    # Force new to FALSE, so the next plot calling plot.new() start on a new clean window,
+    # But only if we actually plot something
+    if (isTRUE(display_plot) || (isTRUE(exit_par$new) && !isTRUE(entry_par$new)))
+    {
+      par(new = FALSE)
+    }
+  }, add = TRUE)
 
   ## Detect the type of trait data
   trait_data_type <- deepSTRAPP_outputs$trait_data_type
@@ -340,7 +393,8 @@ plot_rates_through_time <- function (
              display_plot = display_plot,
              PDF_file_path = PDF_file_path,
              return_mean_data_per_samples_df = return_mean_data_per_samples_df,
-             return_median_data_across_samples_df = return_median_data_across_samples_df
+             return_median_data_across_samples_df = return_median_data_across_samples_df,
+             verbose = verbose
            )
          },
          categorical =  { # Case for categorical data
@@ -357,7 +411,8 @@ plot_rates_through_time <- function (
              display_plot = display_plot,
              PDF_file_path = PDF_file_path,
              return_mean_data_per_samples_df = return_mean_data_per_samples_df,
-             return_median_data_across_samples_df = return_median_data_across_samples_df
+             return_median_data_across_samples_df = return_median_data_across_samples_df,
+             verbose = verbose
            )
          },
          biogeographic = { # Case for biogeographic data
@@ -374,7 +429,8 @@ plot_rates_through_time <- function (
              display_plot = display_plot,
              PDF_file_path = PDF_file_path,
              return_mean_data_per_samples_df = return_mean_data_per_samples_df,
-             return_median_data_across_samples_df = return_median_data_across_samples_df
+             return_median_data_across_samples_df = return_median_data_across_samples_df,
+             verbose = verbose
            )
          }
   )
@@ -399,8 +455,8 @@ plot_rates_through_time_for_continuous_data <- function (
     display_plot = TRUE,
     PDF_file_path = NULL,
     return_mean_data_per_samples_df = FALSE,
-    return_median_data_across_samples_df = FALSE
-)
+    return_median_data_across_samples_df = FALSE,
+    verbose = TRUE)
 {
   ### Check input validity
   {
@@ -408,12 +464,12 @@ plot_rates_through_time_for_continuous_data <- function (
     # Check that quantile_ranges are between 0 and 1
     if (any(quantile_ranges < 0))
     {
-      stop(paste0("'quantile_ranges' must be numerical values between [0, 1] providing trait data quantiles to use to aggregate rate values.\n",
+      stop(paste0("'quantile_ranges' must be numeric values between [0, 1] providing trait data quantiles to use to aggregate rate values.\n",
                   "Current values are ", paste(quantile_ranges, collapse = ", ")),".")
     }
     if (any(quantile_ranges > 1))
     {
-      stop(paste0("'quantile_ranges' must be numerical values between [0, 1] providing trait data quantiles to use to aggregate rate values.\n",
+      stop(paste0("'quantile_ranges' must be numeric values between [0, 1] providing trait data quantiles to use to aggregate rate values.\n",
                   "Current values are ", paste(quantile_ranges, collapse = ", ")),".")
     }
     # Ensure that quantile_ranges are properly ordered in increasing values
@@ -448,89 +504,166 @@ plot_rates_through_time_for_continuous_data <- function (
     }
   }
 
+  ## Create binding of new variables to avoid Notes
+  tip_ID <- Map_ID <- BAMM_sample_ID <- focal_time <- quant_traits <- trait_data_type <- regime_ID <- quantile_probs <- NULL
+  trait_value <- rates <- median_rates <- mean_rates <- NULL
+  n_points <- points_ID <- quant_rates <- NULL
+
   ## Adjust rate_type for labels
   rate_type_label <- stringr::str_to_title(rate_type)
   rate_type_label <- gsub(pattern = "_", replacement = " ", x = rate_type_label)
 
-  ## Create binding of new variables to avoid Notes
-  tip_ID <- BAMM_sample_ID <- focal_time <- quant_traits <- NULL
-  trait_value <- rates <- median_rates <- mean_rates <- NULL
-  n_points <- points_ID <- quant_rates <- NULL
-
-  ## Merge diversification and trait data
-  # Trait data are copied across BAMM samples
-  data_per_samples_df <- dplyr::left_join(
-    x = deepSTRAPP_outputs$diversification_data_df_over_time,
-    y = deepSTRAPP_outputs$trait_data_df_over_time,
-    by = dplyr::join_by(focal_time, tip_ID))
-
-  ## Filter data for selected rate_type
+  ## Filter diversification data for selected rate_type before merging with trait data to save RAM
+  diversification_data_df <- deepSTRAPP_outputs$diversification_data_df_over_time
   if (rate_type == "speciation") { rate_type <- "lambda" }
   if (rate_type == "extinction") { rate_type <- "mu" }
-  data_per_samples_df <- data_per_samples_df[data_per_samples_df$rate_type == rate_type, ]
+  diversification_data_df <- diversification_data_df[diversification_data_df$rate_type == rate_type, ]
 
-  # Filter data for the selected time range
+  ## Filter data for the maps and BAMM_samples chosen for the tests based on '$trait_maps_vs_BAMM_samples_list'
+  trait_maps_vs_BAMM_samples_list <- deepSTRAPP_outputs$trait_maps_vs_BAMM_samples_list
+  trait_data_df <- deepSTRAPP_outputs$trait_data_df_over_time
+  trait_data_df <- trait_data_df[trait_data_df$Map_ID %in% trait_maps_vs_BAMM_samples_list$trait_map_ID, ]
+  diversification_data_df <- diversification_data_df[diversification_data_df$BAMM_sample_ID %in% trait_maps_vs_BAMM_samples_list$BAMM_posterior_sample_ID, ]
+
+  ## Filter data for the selected time range before merging with diversification data to save RAM
   if (!is.null(time_range))
   {
-    data_per_samples_df <- data_per_samples_df[data_per_samples_df$focal_time <= time_range[2], ]
-    data_per_samples_df <- data_per_samples_df[data_per_samples_df$focal_time >= time_range[1], ]
+    trait_data_df <- trait_data_df[trait_data_df$focal_time <= time_range[2], ]
+    trait_data_df <- trait_data_df[trait_data_df$focal_time >= time_range[1], ]
   } else {
     # Extract time range from data
-    time_range <- range(data_per_samples_df$focal_time)
+    time_range <- range(trait_data_df$focal_time)
   }
 
-  if (nrow(data_per_samples_df) == 0)
+  if (nrow(trait_data_df) == 0)
   {
     stop("No data found in the time range c(",time_range[1],", ", time_range[2],").\n")
   }
 
-  ## Compute quantile thresholds for each focal_time
+  ## Merge diversification and trait data following the pairing between stochastic maps and BAMM samples used for the uncertainty_strategy.
+
+  if (verbose)
+  {
+    cat(paste0(Sys.time()," - Merging trait data with diversification data in accordance to the uncertainty_strategy = '",deepSTRAPP_outputs$uncertainty_strategy,"'.\n"))
+  }
+
+  if (deepSTRAPP_outputs$uncertainty_strategy == "rates_only")
+  {
+    ## ML trait data ("ML_map") is nested within BAMM samples = copied over all BAMM samples
+    data_per_samples_df <- dplyr::left_join(
+      x = diversification_data_df,
+      y = trait_data_df,
+      by = dplyr::join_by(focal_time, tip_ID))
+  }
+
+  if (deepSTRAPP_outputs$uncertainty_strategy == "paired")
+  {
+    ## Trait data is paired with BAMM samples according to '$trait_maps_vs_BAMM_samples_list'
+    pairing_data_df <- data.frame(Map_ID = trait_maps_vs_BAMM_samples_list$trait_map_ID,
+                                  BAMM_sample_ID = trait_maps_vs_BAMM_samples_list$BAMM_posterior_sample_ID)
+    # diversification_data_df$BAMM_sample_ID <- paste0("BAMM_", diversification_data_df$BAMM_sample_ID)
+    data_per_samples_df <- pairing_data_df |>
+      # Join trait data
+      dplyr::left_join(y = trait_data_df,
+                       by = "Map_ID",
+                       relationship = "many-to-many") |>
+      # Join diversification data
+      dplyr::left_join(y = diversification_data_df,
+                       by = c("BAMM_sample_ID", "focal_time", "tip_ID"),
+                       relationship = "many-to-many")
+  }
+
+  if (deepSTRAPP_outputs$uncertainty_strategy == "full")
+  {
+    ## All trait data is crossed with BAMM samples
+    data_per_samples_df <- dplyr::left_join(
+      x = diversification_data_df,
+      y = trait_data_df,
+      by = dplyr::join_by(focal_time, tip_ID),
+      relationship = "many-to-many")
+  }
+
+  ## Remove NA if any
+  data_per_samples_df <- data_per_samples_df[!is.na(data_per_samples_df$trait_value), ]
+
+  if (verbose)
+  {
+    cat(paste0(Sys.time()," - Attributing trait quantile groups.\n"))
+  }
+
+  ## Reorder columns
+  data_per_samples_df <- data_per_samples_df |>
+    dplyr::select(focal_time, tip_ID, Map_ID, BAMM_sample_ID, trait_data_type, trait_value, rate_type, regime_ID, rates)  |>
+    dplyr::arrange(focal_time, tip_ID, Map_ID, BAMM_sample_ID, trait_data_type, trait_value, rate_type, regime_ID, rates)
+
+  ## Compute quantile thresholds for each focal_time, per Map X BAMM samples
   quantiles_data_df <- data_per_samples_df |>
-    dplyr::group_by(focal_time) |>
+    # dplyr::group_by(focal_time) |>
+    dplyr::group_by(focal_time, Map_ID, BAMM_sample_ID) |>
     # Compute quantiles of trait value
     dplyr::reframe(quant_traits = stats::quantile(trait_value, probs = quantile_ranges, na.rm = T))
+  quantiles_data_df$quantile_probs <- rep(quantile_ranges, length.out = nrow(quantiles_data_df))
 
-  ## Attribute a quantile range to trait values found across branches for each focal_time
-  # (will be copy across BAMM samples as trait value do not change across BAMM samples)
+  ### Attribute a quantile range to trait values found across branches for each focal_time, per Map X BAMM samples
 
-  data_per_samples_df$quantile_ranges <- NA
-  # Loop per focal_time
-  focal_time_list <- unique(data_per_samples_df$focal_time)
-  for (i in seq_along(focal_time_list))
+  # ## Fast solution with pre-defined intervals
+  #
+  # ## Reformat into wide_df
+  # quantiles_wide_df <- quantiles_data_df |>
+  #   dplyr::mutate(quantile = paste0("Q", quantile_probs * 100)) |>
+  #   dplyr::select(focal_time, Map_ID, BAMM_sample_ID, quantile, quant_traits) |>
+  #   tidyr::pivot_wider(names_from = quantile,
+  #                      values_from = quant_traits)
+  #
+  # ## Join quantiles thresholds to data
+  # data_per_samples_df <- data_per_samples_df |>
+  #   dplyr::left_join(quantiles_wide_df, by = c("focal_time", "Map_ID", "BAMM_sample_ID"))
+  #
+  # ## Attribute quantiles_ranges based on thresholds
+  # data_per_samples_df <- data_per_samples_df |>
+  #   dplyr::mutate(quantile_ranges = dplyr::case_when(
+  #       trait_value <= Q25 ~ "Q0% - Q25%",
+  #       trait_value <= Q50 ~ "Q25% - Q50%",
+  #       trait_value <= Q75 ~ "Q50% - Q75%",
+  #       TRUE               ~ "Q75% - Q100%"))
+
+  ## Create labels for the user-defined intervals
+  quantile_labels <- paste0("Q", quantile_ranges[-length(quantile_ranges)] * 100,"% - Q", quantile_ranges[-1] * 100, "%")
+
+  ## Reformat into wide_df with quantile thresholds as columns
+  quantiles_wide_df <- quantiles_data_df |>
+    dplyr::mutate(quantile = paste0("Q", quantile_probs * 100)) |>
+    dplyr::select(focal_time, Map_ID, BAMM_sample_ID, quantile, quant_traits) |>
+    tidyr::pivot_wider(names_from = quantile,
+                       values_from = quant_traits)
+
+  ## Join quantiles thresholds to data
+  data_per_samples_df <- data_per_samples_df |>
+    dplyr::left_join(quantiles_wide_df, by = c("focal_time", "Map_ID", "BAMM_sample_ID"))
+
+  ## Generate expressions for case_when() conditions dynamically
+  case_conditions <- lapply(X = seq_along(quantile_ranges)[-length(quantile_ranges)],
+                            FUN = function(i) { rlang::expr(trait_value <= !!rlang::sym(paste0("Q", quantile_ranges[i + 1] * 100)) ~ !!quantile_labels[i]) } )
+
+  ## Attribute quantile ranges using case_when
+  data_per_samples_df <- data_per_samples_df |>
+    dplyr::mutate(quantile_ranges = rlang::eval_tidy(rlang::expr(dplyr::case_when(!!!case_conditions))))
+
+  # head(data_per_samples_df)
+  # table(data_per_samples_df$quantile_ranges) # Should be roughly equally distributed if groups are of the same quantile range
+
+  if (verbose)
   {
-    # i <- 1
-
-    # Extract focal_time
-    focal_time_i <- focal_time_list[i]
-
-    # Get thresholds for this focal_time
-    quantile_thresholds <- quantiles_data_df$quant_traits[quantiles_data_df$focal_time == focal_time_i]
-
-    # Loop per quantile ranges
-    # From highest to lowest
-    for (j in length(quantile_ranges):2)
-    {
-      # j <- 2
-
-      # Get quantile range name
-      quantile_range_name <- paste0("Q",quantile_ranges[j-1]*100,"% - Q",quantile_ranges[j]*100,"%")
-
-      # Get max threshold for this quantile range
-      threshold_j <- quantile_thresholds[j]
-
-      # Inform $quantile_ranges by attributing all branches with rates <= than the max threshold
-      data_per_samples_df$quantile_ranges[(data_per_samples_df$focal_time == focal_time_i) & (data_per_samples_df$trait_value <= threshold_j)] <- quantile_range_name
-    }
+    cat(paste0(Sys.time()," - Aggregating rates trait data per samples.\n"))
   }
-  # table(data_per_samples_df$quantile_ranges) # Should be roughly equally distributed
 
   ## Aggregate across tip_ID (branches), per quantile ranges
   mean_data_per_samples_df <- data_per_samples_df |>
-    dplyr::group_by(focal_time, BAMM_sample_ID, quantile_ranges) |>
+    dplyr::group_by(focal_time, Map_ID, BAMM_sample_ID, quantile_ranges) |>
     dplyr::summarise(mean_rates = mean(rates), .groups = "keep") |>
     dplyr::ungroup()
 
-  ## Aggregate across BAMM samples
+  ## Aggregate across stochastic maps X BAMM samples
   median_data_across_samples_df <- mean_data_per_samples_df |>
     dplyr::group_by(focal_time, quantile_ranges) |>
     dplyr::summarise(median_rates = median(mean_rates), .groups = "keep") |>
@@ -549,13 +682,18 @@ plot_rates_through_time_for_continuous_data <- function (
   }
   names(colors_per_groups) <- levels(as.factor(median_data_across_samples_df$quantile_ranges))
 
+  if (verbose)
+  {
+    cat(paste0(Sys.time()," - Preparing RTT plot.\n"))
+  }
+
   ## Case for plot without CI
   if (!plot_CI)
   {
     rates_TT_ggplot <- ggplot2::ggplot(data = median_data_across_samples_df) +
 
       # Plot mean lines
-      ggplot2::geom_line(mapping = aes(y = median_rates, x = focal_time,
+      ggplot2::geom_line(mapping = ggplot2::aes(y = median_rates, x = focal_time,
                                        group = quantile_ranges, col = quantile_ranges),
                          alpha = 1.0,
                          linewidth = 1.5) +
@@ -615,15 +753,15 @@ plot_rates_through_time_for_continuous_data <- function (
 
         # Plot line replicates for all samples
         ggplot2::geom_line(data = mean_data_per_samples_df,
-                           mapping = aes(y = mean_rates, x = focal_time,
-                                         group = interaction(quantile_ranges, BAMM_sample_ID),
+                           mapping = ggplot2::aes(y = mean_rates, x = focal_time,
+                                         group = interaction(quantile_ranges, Map_ID, BAMM_sample_ID),
                                          col = quantile_ranges),
                            alpha = 0.01,
                            linewidth = 3.0) +
 
         # Plot mean lines
         ggplot2::geom_line(data = median_data_across_samples_df,
-                           mapping = aes(y = median_rates, x = focal_time,
+                           mapping = ggplot2::aes(y = median_rates, x = focal_time,
                                          group = quantile_ranges, col = quantile_ranges),
                            alpha = 1.0,
                            linewidth = 1.5) +
@@ -706,7 +844,7 @@ plot_rates_through_time_for_continuous_data <- function (
 
         # Plot quantile polygons
         ggplot2::geom_polygon(data = quantiles_mean_data_df,
-                              mapping = aes(y = quant_rates, x = focal_time,
+                              mapping = ggplot2::aes(y = quant_rates, x = focal_time,
                                             group = quantile_ranges,
                                             fill = quantile_ranges),
                               alpha = 0.3,
@@ -714,7 +852,7 @@ plot_rates_through_time_for_continuous_data <- function (
 
         # Plot mean lines
         ggplot2::geom_line(data = median_data_across_samples_df,
-                           mapping = aes(y = median_rates, x = focal_time,
+                           mapping = ggplot2::aes(y = median_rates, x = focal_time,
                                          group = quantile_ranges, col = quantile_ranges),
                            alpha = 1.0,
                            linewidth = 1.5) +
@@ -823,8 +961,8 @@ plot_rates_through_time_for_categorical_data <- function (
     display_plot = TRUE,
     PDF_file_path = NULL,
     return_mean_data_per_samples_df = FALSE,
-    return_median_data_across_samples_df = FALSE
-)
+    return_median_data_across_samples_df = FALSE,
+    verbose = TRUE)
 {
   ### Check input validity
   {
@@ -872,7 +1010,7 @@ plot_rates_through_time_for_categorical_data <- function (
   }
 
   ## Create binding of new variables to avoid Notes
-  tip_ID <- BAMM_sample_ID <- focal_time <- quant_traits <- NULL
+  tip_ID <- Map_ID <- BAMM_sample_ID <- focal_time <- quant_traits <- trait_data_type <- regime_ID <- NULL
   trait_value <- rates <- median_rates <- mean_rates <- NULL
   n_points <- points_ID <- quant_rates <- NULL
 
@@ -880,46 +1018,103 @@ plot_rates_through_time_for_categorical_data <- function (
   rate_type_label <- stringr::str_to_title(rate_type)
   rate_type_label <- gsub(pattern = "_", replacement = " ", x = rate_type_label)
 
-  ## Merge diversification and trait data
-  # Trait data are copied across BAMM samples
-  data_per_samples_df <- dplyr::left_join(
-    x = deepSTRAPP_outputs$diversification_data_df_over_time,
-    y = deepSTRAPP_outputs$trait_data_df_over_time,
-    by = dplyr::join_by(focal_time, tip_ID))
-
-  ## Filter data for selected rate_type
+  ## Filter diversification data for selected rate_type before merging with trait data to save RAM
+  diversification_data_df <- deepSTRAPP_outputs$diversification_data_df_over_time
   if (rate_type == "speciation") { rate_type <- "lambda" }
   if (rate_type == "extinction") { rate_type <- "mu" }
-  data_per_samples_df <- data_per_samples_df[data_per_samples_df$rate_type == rate_type, ]
+  diversification_data_df <- diversification_data_df[diversification_data_df$rate_type == rate_type, ]
 
-  ## Filter data for selected states
+  ## Filter trait data for selected states before merging with diversification data to save RAM
+  trait_data_df <- deepSTRAPP_outputs$trait_data_df_over_time
   if (!("all" %in% select_trait_levels))
   {
-    data_per_samples_df <- data_per_samples_df[data_per_samples_df$trait_value %in% select_trait_levels, ]
+    trait_data_df <- trait_data_df[trait_data_df$trait_value %in% select_trait_levels, ]
   }
 
-  # Filter data for the selected time range
+  ## Filter data for the maps and BAMM_samples chosen for the tests based on '$trait_maps_vs_BAMM_samples_list'
+  trait_maps_vs_BAMM_samples_list <- deepSTRAPP_outputs$trait_maps_vs_BAMM_samples_list
+  trait_data_df <- trait_data_df[trait_data_df$Map_ID %in% trait_maps_vs_BAMM_samples_list$trait_map_ID, ]
+  # diversification_data_df$BAMM_sample_ID <- paste0("BAMM_", diversification_data_df$BAMM_sample_ID)
+  diversification_data_df <- diversification_data_df[diversification_data_df$BAMM_sample_ID %in% trait_maps_vs_BAMM_samples_list$BAMM_posterior_sample_ID, ]
+
+  ## Filter data for the selected time range before merging with diversification data to save RAM
   if (!is.null(time_range))
   {
-    data_per_samples_df <- data_per_samples_df[data_per_samples_df$focal_time <= time_range[2], ]
-    data_per_samples_df <- data_per_samples_df[data_per_samples_df$focal_time >= time_range[1], ]
+    trait_data_df <- trait_data_df[trait_data_df$focal_time <= time_range[2], ]
+    trait_data_df <- trait_data_df[trait_data_df$focal_time >= time_range[1], ]
   } else {
     # Extract time range from data
-    time_range <- range(data_per_samples_df$focal_time)
+    time_range <- range(trait_data_df$focal_time)
   }
 
-  if (nrow(data_per_samples_df) == 0)
+  if (nrow(trait_data_df) == 0)
   {
     stop("No data found in the time range c(",time_range[1],", ", time_range[2],") for ",paste(select_trait_levels, collapse = ", ")," states.\n")
   }
 
+  ## Merge diversification and trait data following the pairing between stochastic maps and BAMM samples used for the uncertainty_strategy.
+
+  if (verbose)
+  {
+    cat(paste0(Sys.time()," - Merging trait data with diversification data in accordance to the uncertainty_strategy = '",deepSTRAPP_outputs$uncertainty_strategy,"'.\n"))
+  }
+
+  if (deepSTRAPP_outputs$uncertainty_strategy == "rates_only")
+  {
+    ## ML trait data ("ML_map") is nested within BAMM samples = copied over all BAMM samples
+    data_per_samples_df <- dplyr::left_join(
+      x = diversification_data_df,
+      y = trait_data_df,
+      by = dplyr::join_by(focal_time, tip_ID))
+  }
+
+  if (deepSTRAPP_outputs$uncertainty_strategy == "paired")
+  {
+    ## Trait data is paired with BAMM samples according to '$trait_maps_vs_BAMM_samples_list'
+    pairing_data_df <- data.frame(Map_ID = trait_maps_vs_BAMM_samples_list$trait_map_ID,
+                                  BAMM_sample_ID = trait_maps_vs_BAMM_samples_list$BAMM_posterior_sample_ID)
+    # diversification_data_df$BAMM_sample_ID <- paste0("BAMM_", diversification_data_df$BAMM_sample_ID)
+    data_per_samples_df <- pairing_data_df |>
+      # Join trait data
+      dplyr::left_join(y = trait_data_df,
+                       by = "Map_ID",
+                       relationship = "many-to-many") |>
+      # Join diversification data
+      dplyr::left_join(y = diversification_data_df,
+                       by = c("BAMM_sample_ID", "focal_time", "tip_ID"),
+                       relationship = "many-to-many")
+  }
+
+  if (deepSTRAPP_outputs$uncertainty_strategy == "full")
+  {
+    ## All trait data is crossed with BAMM samples
+    data_per_samples_df <- dplyr::left_join(
+      x = diversification_data_df,
+      y = trait_data_df,
+      by = dplyr::join_by(focal_time, tip_ID),
+      relationship = "many-to-many")
+  }
+
+  ## Remove NA due to state filtering
+  data_per_samples_df <- data_per_samples_df[!is.na(data_per_samples_df$trait_value), ]
+
+  if (verbose)
+  {
+    cat(paste0(Sys.time()," - Aggregating rates trait data per samples.\n"))
+  }
+
+  ## Reorder columns
+  data_per_samples_df <- data_per_samples_df |>
+    dplyr::select(focal_time, tip_ID, Map_ID, BAMM_sample_ID, trait_data_type, trait_value, rate_type, regime_ID, rates)  |>
+    dplyr::arrange(focal_time, tip_ID, Map_ID, BAMM_sample_ID, trait_data_type, trait_value, rate_type, regime_ID, rates)
+
   ## Aggregate across tip_ID (branches), per trait states
   mean_data_per_samples_df <- data_per_samples_df |>
-    dplyr::group_by(focal_time, BAMM_sample_ID, trait_value) |>
+    dplyr::group_by(focal_time, Map_ID, BAMM_sample_ID, trait_value) |>
     dplyr::summarise(mean_rates = mean(rates), .groups = "keep") |>
     dplyr::ungroup()
 
-  ## Aggregate across BAMM samples
+  ## Aggregate across BAMM samples X stochastic maps
   median_data_across_samples_df <- mean_data_per_samples_df |>
     dplyr::group_by(focal_time, trait_value) |>
     dplyr::summarise(median_rates = median(mean_rates), .groups = "keep") |>
@@ -935,13 +1130,18 @@ plot_rates_through_time_for_categorical_data <- function (
     names(colors_per_levels) <- levels(as.factor(median_data_across_samples_df$trait_value))
   }
 
+  if (verbose)
+  {
+    cat(paste0(Sys.time()," - Prepare RTT plot.\n"))
+  }
+
   ## Case for plot without CI
   if (!plot_CI)
   {
     rates_TT_ggplot <- ggplot2::ggplot(data = median_data_across_samples_df) +
 
       # Plot mean lines
-      ggplot2::geom_line(mapping = aes(y = median_rates, x = focal_time,
+      ggplot2::geom_line(mapping = ggplot2::aes(y = median_rates, x = focal_time,
                                        group = trait_value, col = trait_value),
                          alpha = 1.0,
                          linewidth = 1.5) +
@@ -999,17 +1199,17 @@ plot_rates_through_time_for_categorical_data <- function (
 
       rates_TT_ggplot <- ggplot2::ggplot(data = mean_data_per_samples_df) +
 
-        # Plot line replicates for all samples
+        # Plot line replicates for all stochastic maps X BAMM samples
         ggplot2::geom_line(data = mean_data_per_samples_df,
-                           mapping = aes(y = mean_rates, x = focal_time,
-                                         group = interaction(trait_value, BAMM_sample_ID),
+                           mapping = ggplot2::aes(y = mean_rates, x = focal_time,
+                                         group = interaction(trait_value, Map_ID, BAMM_sample_ID),
                                          col = trait_value),
                            alpha = 0.01,
                            linewidth = 3.0) +
 
         # Plot mean lines
         ggplot2::geom_line(data = median_data_across_samples_df,
-                           mapping = aes(y = median_rates, x = focal_time,
+                           mapping = ggplot2::aes(y = median_rates, x = focal_time,
                                          group = trait_value, col = trait_value),
                            alpha = 1.0,
                            linewidth = 1.5) +
@@ -1092,7 +1292,7 @@ plot_rates_through_time_for_categorical_data <- function (
 
         # Plot quantile polygons
         ggplot2::geom_polygon(data = quantiles_mean_data_df,
-                              mapping = aes(y = quant_rates, x = focal_time,
+                              mapping = ggplot2::aes(y = quant_rates, x = focal_time,
                                             group = trait_value,
                                             fill = trait_value),
                               alpha = 0.3,
@@ -1100,7 +1300,7 @@ plot_rates_through_time_for_categorical_data <- function (
 
         # Plot mean lines
         ggplot2::geom_line(data = median_data_across_samples_df,
-                           mapping = aes(y = median_rates, x = focal_time,
+                           mapping = ggplot2::aes(y = median_rates, x = focal_time,
                                          group = trait_value, col = trait_value),
                            alpha = 1.0,
                            linewidth = 1.5) +
@@ -1209,8 +1409,8 @@ plot_rates_through_time_for_biogeographic_data <- function (
     display_plot = TRUE,
     PDF_file_path = NULL,
     return_mean_data_per_samples_df = FALSE,
-    return_median_data_across_samples_df = FALSE
-)
+    return_median_data_across_samples_df = FALSE,
+    verbose = TRUE)
 {
   ### Check input validity
   {
@@ -1256,9 +1456,8 @@ plot_rates_through_time_for_biogeographic_data <- function (
     }
   }
 
-
   ## Create binding of new variables to avoid Notes
-  tip_ID <- BAMM_sample_ID <- focal_time <- quant_traits <- NULL
+  tip_ID <- Map_ID <- BAMM_sample_ID <- focal_time <- quant_traits <- trait_data_type <- regime_ID <- NULL
   trait_value <- rates <-  median_rates <- mean_rates <- NULL
   n_points <- points_ID <- quant_rates <- NULL
 
@@ -1266,46 +1465,102 @@ plot_rates_through_time_for_biogeographic_data <- function (
   rate_type_label <- stringr::str_to_title(rate_type)
   rate_type_label <- gsub(pattern = "_", replacement = " ", x = rate_type_label)
 
-  ## Merge diversification and trait data
-  # Trait data are copied across BAMM samples
-  data_per_samples_df <- dplyr::left_join(
-    x = deepSTRAPP_outputs$diversification_data_df_over_time,
-    y = deepSTRAPP_outputs$trait_data_df_over_time,
-    by = dplyr::join_by(focal_time, tip_ID))
-
-  ## Filter data for selected rate_type
+  ## Filter diversification data for selected rate_type before merging with trait data to save RAM
+  diversification_data_df <- deepSTRAPP_outputs$diversification_data_df_over_time
   if (rate_type == "speciation") { rate_type <- "lambda" }
   if (rate_type == "extinction") { rate_type <- "mu" }
-  data_per_samples_df <- data_per_samples_df[data_per_samples_df$rate_type == rate_type, ]
+  diversification_data_df <- diversification_data_df[diversification_data_df$rate_type == rate_type, ]
 
-  ## Filter data for selected states/ranges
+  ## Filter trait data for selected states/ranges before merging with diversification data to save RAM
+  trait_data_df <- deepSTRAPP_outputs$trait_data_df_over_time
   if (!("all" %in% select_trait_levels))
   {
-    data_per_samples_df <- data_per_samples_df[data_per_samples_df$trait_value %in% select_trait_levels, ]
+    trait_data_df <- trait_data_df[trait_data_df$trait_value %in% select_trait_levels, ]
   }
 
-  # Filter data for the selected time range
+  ## Filter data for the maps and BAMM_samples chosen for the tests based on '$trait_maps_vs_BAMM_samples_list'
+  trait_maps_vs_BAMM_samples_list <- deepSTRAPP_outputs$trait_maps_vs_BAMM_samples_list
+  trait_data_df <- trait_data_df[trait_data_df$Map_ID %in% trait_maps_vs_BAMM_samples_list$trait_map_ID, ]
+  diversification_data_df <- diversification_data_df[diversification_data_df$BAMM_sample_ID %in% trait_maps_vs_BAMM_samples_list$BAMM_posterior_sample_ID, ]
+
+  ## Filter data for the selected time range before merging with diversification data to save RAM
   if (!is.null(time_range))
   {
-    data_per_samples_df <- data_per_samples_df[data_per_samples_df$focal_time <= time_range[2], ]
-    data_per_samples_df <- data_per_samples_df[data_per_samples_df$focal_time >= time_range[1], ]
+    trait_data_df <- trait_data_df[trait_data_df$focal_time <= time_range[2], ]
+    trait_data_df <- trait_data_df[trait_data_df$focal_time >= time_range[1], ]
   } else {
     # Extract time range from data
-    time_range <- range(data_per_samples_df$focal_time)
+    time_range <- range(trait_data_df$focal_time)
   }
 
-  if (nrow(data_per_samples_df) == 0)
+  if (nrow(trait_data_df) == 0)
   {
-    stop("No data found in the time range c(",time_range[1],", ", time_range[2],") in ",paste(select_trait_levels, collapse = ", ")," ranges.\n")
+    stop("No data found in the time range c(",time_range[1],", ", time_range[2],") for ",paste(select_trait_levels, collapse = ", ")," ranges.\n")
   }
+
+  ## Merge diversification and trait data following the pairing between stochastic maps and BAMM samples used for the uncertainty_strategy.
+
+  if (verbose)
+  {
+    cat(paste0(Sys.time()," - Merging trait data with diversification data in accordance to the uncertainty_strategy = '",deepSTRAPP_outputs$uncertainty_strategy,"'.\n"))
+  }
+
+  if (deepSTRAPP_outputs$uncertainty_strategy == "rates_only")
+  {
+    ## ML trait data ("ML_map") is nested within BAMM samples = copied over all BAMM samples
+    data_per_samples_df <- dplyr::left_join(
+      x = diversification_data_df,
+      y = trait_data_df,
+      by = dplyr::join_by(focal_time, tip_ID))
+  }
+
+  if (deepSTRAPP_outputs$uncertainty_strategy == "paired")
+  {
+    ## Trait data is paired with BAMM samples according to '$trait_maps_vs_BAMM_samples_list'
+    pairing_data_df <- data.frame(Map_ID = trait_maps_vs_BAMM_samples_list$trait_map_ID,
+                                  BAMM_sample_ID = trait_maps_vs_BAMM_samples_list$BAMM_posterior_sample_ID)
+    # diversification_data_df$BAMM_sample_ID <- paste0("BAMM_", diversification_data_df$BAMM_sample_ID)
+    data_per_samples_df <- pairing_data_df |>
+      # Join trait data
+      dplyr::left_join(y = trait_data_df,
+         by = "Map_ID",
+         relationship = "many-to-many") |>
+      # Join diversification data
+      dplyr::left_join(y = diversification_data_df,
+         by = c("BAMM_sample_ID", "focal_time", "tip_ID"),
+         relationship = "many-to-many")
+  }
+
+  if (deepSTRAPP_outputs$uncertainty_strategy == "full")
+  {
+    ## All trait data is crossed with BAMM samples
+    data_per_samples_df <- dplyr::left_join(
+      x = diversification_data_df,
+      y = trait_data_df,
+      by = dplyr::join_by(focal_time, tip_ID),
+      relationship = "many-to-many")
+  }
+
+  ## Remove NA due to state filtering
+  data_per_samples_df <- data_per_samples_df[!is.na(data_per_samples_df$trait_value), ]
+
+  if (verbose)
+  {
+    cat(paste0(Sys.time()," - Aggregating rates trait data per samples.\n"))
+  }
+
+  ## Reorder columns
+  data_per_samples_df <- data_per_samples_df |>
+    dplyr::select(focal_time, tip_ID, Map_ID, BAMM_sample_ID, trait_data_type, trait_value, rate_type, regime_ID, rates)  |>
+    dplyr::arrange(focal_time, tip_ID, Map_ID, BAMM_sample_ID, trait_data_type, trait_value, rate_type, regime_ID, rates)
 
   ## Aggregate across tip_ID (branches), per trait ranges
   mean_data_per_samples_df <- data_per_samples_df |>
-    dplyr::group_by(focal_time, BAMM_sample_ID, trait_value) |>
+    dplyr::group_by(focal_time, Map_ID, BAMM_sample_ID, trait_value) |>
     dplyr::summarise(mean_rates = mean(rates), .groups = "keep") |>
     dplyr::ungroup()
 
-  ## Aggregate across BAMM samples
+  ## Aggregate across stochastic maps X BAMM samples
   median_data_across_samples_df <- mean_data_per_samples_df |>
     dplyr::group_by(focal_time, trait_value) |>
     dplyr::summarise(median_rates = median(mean_rates), .groups = "keep") |>
@@ -1321,13 +1576,18 @@ plot_rates_through_time_for_biogeographic_data <- function (
     names(colors_per_levels) <- levels(as.factor(median_data_across_samples_df$trait_value))
   }
 
+  if (verbose)
+  {
+    cat(paste0(Sys.time()," - Prepare RTT plot.\n"))
+  }
+
   ## Case for plot without CI
   if (!plot_CI)
   {
     rates_TT_ggplot <- ggplot2::ggplot(data = median_data_across_samples_df) +
 
       # Plot mean lines
-      ggplot2::geom_line(mapping = aes(y = median_rates, x = focal_time,
+      ggplot2::geom_line(mapping = ggplot2::aes(y = median_rates, x = focal_time,
                                        group = trait_value, col = trait_value),
                          alpha = 1.0,
                          linewidth = 1.5) +
@@ -1387,15 +1647,15 @@ plot_rates_through_time_for_biogeographic_data <- function (
 
         # Plot line replicates for all samples
         ggplot2::geom_line(data = mean_data_per_samples_df,
-                           mapping = aes(y = mean_rates, x = focal_time,
-                                         group = interaction(trait_value, BAMM_sample_ID),
+                           mapping = ggplot2::aes(y = mean_rates, x = focal_time,
+                                         group = interaction(trait_value, Map_ID, BAMM_sample_ID),
                                          col = trait_value),
                            alpha = 0.01,
                            linewidth = 3.0) +
 
         # Plot mean lines
         ggplot2::geom_line(data = median_data_across_samples_df,
-                           mapping = aes(y = median_rates, x = focal_time,
+                           mapping = ggplot2::aes(y = median_rates, x = focal_time,
                                          group = trait_value, col = trait_value),
                            alpha = 1.0,
                            linewidth = 1.5) +
@@ -1445,7 +1705,6 @@ plot_rates_through_time_for_biogeographic_data <- function (
           axis.text.x = ggplot2::element_text(margin = ggplot2::margin(t = 5)),
           axis.text.y = ggplot2::element_text(margin = ggplot2::margin(r = 5)))
 
-
     } else {
 
       ## Plot with quantiles_rect CI
@@ -1478,7 +1737,7 @@ plot_rates_through_time_for_biogeographic_data <- function (
 
         # Plot quantile polygons
         ggplot2::geom_polygon(data = quantiles_mean_data_df,
-                              mapping = aes(y = quant_rates, x = focal_time,
+                              mapping = ggplot2::aes(y = quant_rates, x = focal_time,
                                             group = trait_value,
                                             fill = trait_value),
                               alpha = 0.3,
@@ -1486,7 +1745,7 @@ plot_rates_through_time_for_biogeographic_data <- function (
 
         # Plot mean lines
         ggplot2::geom_line(data = median_data_across_samples_df,
-                           mapping = aes(y = median_rates, x = focal_time,
+                           mapping = ggplot2::aes(y = median_rates, x = focal_time,
                                          group = trait_value, col = trait_value),
                            alpha = 1.0,
                            linewidth = 1.5) +
@@ -1542,7 +1801,6 @@ plot_rates_through_time_for_biogeographic_data <- function (
           axis.text = ggplot2::element_text(size = 18, color = "black"),
           axis.text.x = ggplot2::element_text(margin = ggplot2::margin(t = 5)),
           axis.text.y = ggplot2::element_text(margin = ggplot2::margin(r = 5)))
-
     }
   }
 

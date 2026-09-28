@@ -1,13 +1,13 @@
 
 #' @title Plot histogram of STRAPP test statistics to assess results
 #'
-#' @description Plot an histogram of the distribution of the test statistics
+#' @description Plot a histogram of the distribution of the test statistics
 #'   obtained from a STRAPP test carried out for a unique `focal_time`.
 #'   (See [deepSTRAPP::compute_STRAPP_test_for_focal_time()] and
 #'   [deepSTRAPP::run_deepSTRAPP_for_focal_time()]).
 #'
 #'   Returns a single histogram for overall tests.
-#'   If `plot_posthoc_tests = TRUE`, it will return a faceted plot with an histogram per post hoc tests.
+#'   If `plot_posthoc_tests = TRUE`, it will return a faceted plot with a histogram per post hoc test.
 #'
 #'   If a PDF file path is provided in `PDF_file_path`, the plot will be saved directly in a PDF file.
 #'
@@ -15,11 +15,11 @@
 #'   that summarize the results of a STRAPP test for a specific time in the past (i.e. the `focal_time`).
 #'   `deepSTRAPP_outputs` can also be extracted from the output of [deepSTRAPP::run_deepSTRAPP_over_time()] that
 #'   run the whole deepSTRAPP workflow and store results inside `$STRAPP_results_over_time`.
-#' @param focal_time Numerical. (Optional) If `deepSTRAPP_outputs` comprises results over multiple time-steps
+#' @param focal_time Numeric. (Optional) If `deepSTRAPP_outputs` comprises results over multiple time-steps
 #'   (i.e., output of [deepSTRAPP::run_deepSTRAPP_over_time()], this is the time of the STRAPP test targeted for plotting.
 #' @param display_plot Logical. Whether to display the histogram(s) generated in the R console. Default is `TRUE`.
-#' @param plot_posthoc_tests Logical. For multinominal data only. Whether to plot the histogram for the overall Kruskal-Wallis test across all states (`plot_posthoc_tests = FALSE`),
-#'   or plot the histograms for all the pairwise post hoc Dunn's test across pairs of states (`plot_posthoc_tests = TRUE`). Default is `FALSE`.
+#' @param plot_posthoc_tests Logical. For multinomial data only. Whether to plot the histogram for the overall Kruskal-Wallis test across all states (`plot_posthoc_tests = FALSE`),
+#'   or plot the histograms for all the pairwise post hoc Dunn's tests across pairs of states (`plot_posthoc_tests = TRUE`). Default is `FALSE`.
 #' @param PDF_file_path Character string. If provided, the plot will be saved in a PDF file following the path provided here. The path must end with ".pdf".
 #'
 #' @export
@@ -35,8 +35,8 @@
 #'   when `return_perm_data = TRUE` so that the distributions of test stats computed across posterior samples are returned
 #'   among the outputs under `$STRAPP_results$perm_data_df`.
 #'
-#'   For multinominal data (categorical or biogeographic data with more than 2 states), it is possible to plot the histograms of post hoc pairwise tests.
-#'   Set `plot_posthoc_tests = TRUE` to generate histograms for all the pairwise post hoc Dunn's test across pairs of states.
+#'   For multinomial data (categorical or biogeographic data with more than 2 states), it is possible to plot the histograms of post hoc pairwise tests.
+#'   Set `plot_posthoc_tests = TRUE` to generate histograms for all the pairwise post hoc Dunn's tests across pairs of states.
 #'   To achieve this, the `deepSTRAPP_outputs` input object must contain a `$STRAPP_results$posthoc_pairwise_tests$perm_data_array` element
 #'   that summarizes test statistics computed across posterior samples for all pairwise post hoc tests.
 #'   This is obtained from [deepSTRAPP::run_deepSTRAPP_for_focal_time()] when setting both `posthoc_pairwise_tests = TRUE` to carry out post hoc tests,
@@ -47,7 +47,7 @@
 #'   unique time-step used for plotting.
 #'   * `return_perm_data` must be set to `TRUE` so that the permutation data used to compute the tests are returned among the outputs
 #'     under `$STRAPP_results_over_time[[i]]$perm_data_df`.
-#'   * `posthoc_pairwise_tests` must be set to `TRUE` so that the permutation data used to performed the post hoc tests are also
+#'   * `posthoc_pairwise_tests` must be set to `TRUE` so that the permutation data used to perform the post hoc tests are also
 #'     returned among the outputs under `$STRAPP_results_over_time[[i]]$posthoc_pairwise_tests$perm_data_array`.
 #'
 #'  For plotting all time-steps at once, see [deepSTRAPP::plot_histograms_STRAPP_tests_over_time()].
@@ -57,16 +57,17 @@
 #'   It corresponds to the histogram being displayed on the console when the function is run, if `display_plot = TRUE`, and can be further
 #'   modify for aesthetics using the ggplot2 grammar.
 #'
-#'   If using multinominal data and set `plot_posthoc_tests = TRUE`, the function will return a list of objects.
+#'   If using multinomial data and setting `plot_posthoc_tests = TRUE`, the function will return a list of objects.
 #'   Each object is the ggplot associated with a pairwise post hoc test.
 #'   To plot each histogram `i` individually, use `print(output_list[[i]])`.
 #'   To plot all histograms at once in a multifaceted plot, as displayed on the console if `display_plot = TRUE`, use `cowplot::plot_grid(plotlist = output_list)`.
 #'
 #'   Each plot also displays summary statistics for the STRAPP test associated with the data displayed.
-#'   * The quantile of null statistic distribution at the significant threshold used to define test significance. This is the value found on the red dashed line.
+#'   * QX% = The quantile of null statistic distribution at the significance threshold used to define test significance. This is the value found on the red dashed line.
 #'     The test will be considered significant (i.e., the null hypothesis is rejected) if this value is higher than zero (the black dashed line).
-#'   * The p-value of the STRAPP test which correspond the proportion of cases in which the statistics was lower than expected under the null hypothesis
+#'   * P-value =  The p-value of the STRAPP test which corresponds to the proportion of cases in which the statistic was lower than expected under the null hypothesis
 #'     (i.e., the proportion of the histogram found below / on the left-side of the black dashed line).
+#'   * N = The number of test statistics in the null distribution.
 #'
 #'   If a `PDF_file_path` is provided, the function will also generate a PDF file of the plot. For post hoc tests, this will save the multifaceted plot.
 #'
@@ -106,7 +107,8 @@
 #'  \donttest{ # (May take several minutes to run)
 #'  # Run a Stochastic Mapping based on a Brownian Motion model
 #'  # to interpolate values along branches and obtain a "contMap" object
-#'  Ponerinae_contMap <- phytools::contMap(Ponerinae_tree, x = Ponerinae_cont_tip_data,
+#'  Ponerinae_contMap <- phytools::contMap(tree = Ponerinae_tree_old_calib,
+#'                                         x = Ponerinae_cont_tip_data,
 #'                                         res = 100, # Number of time steps
 #'                                         plot = FALSE)
 #'  # Plot contMap = stochastic mapping of continuous trait
@@ -126,10 +128,8 @@
 #'    BAMM_object = Ponerinae_BAMM_object_old_calib,
 #'    focal_time = focal_time,
 #'    rate_type = "net_diversification",
-#'    return_perm_data = TRUE,
-#'    extract_diversification_data_melted_df = TRUE,
-#'    return_updated_trait_data_with_Map = TRUE,
-#'    return_updated_BAMM_object = TRUE)
+#'    uncertainty_strategy = "rates_only",
+#'    return_perm_data = TRUE)
 #'
 #'  ## Explore output
 #'  str(Ponerinae_deepSTRAPP_cont_old_calib_10My, max.level = 1)
@@ -149,7 +149,8 @@
 #'  # ----- Plot histogram of STRAPP overall test results from run_deepSTRAPP_over_time() ----- #
 #'
 #'  ## Load directly outputs from run_deepSTRAPP_over_time()
-#'  data(Ponerinae_deepSTRAPP_cont_old_calib_0_40, package = "deepSTRAPP")
+#'  Ponerinae_deepSTRAPP_cont_old_calib_0_40 <- readRDS(system.file("extdata",
+#'     "Ponerinae_deepSTRAPP_cont_old_calib_0_40.rds", package = "deepSTRAPP"))
 #'  ## This dataset is only available in development versions installed from GitHub.
 #'  # It is not available in CRAN versions.
 #'  # Use remotes::install_github(repo = "MaelDore/deepSTRAPP") to get the latest development version.
@@ -174,7 +175,7 @@
 #'  ## Load data
 #'
 #'  # Load phylogeny
-#'  data(Ponerinae_tree, package = "deepSTRAPP")
+#'  data(Ponerinae_tree_old_calib, package = "deepSTRAPP")
 #'  # Load trait df
 #'  data(Ponerinae_trait_tip_data, package = "deepSTRAPP")
 #'
@@ -220,16 +221,17 @@
 #'
 #'  Ponerinae_deepSTRAPP_cat_3lvl_old_calib_10My <- run_deepSTRAPP_for_focal_time(
 #'     densityMaps = Ponerinae_cat_3lvl_data_old_calib$densityMaps,
+#'     nb_simulations = 100,
 #'     ace = Ponerinae_cat_3lvl_data_old_calib$ace,
 #'     tip_data = Ponerinae_cat_3lvl_tip_data,
 #'     trait_data_type = "categorical",
 #'     BAMM_object = Ponerinae_BAMM_object_old_calib,
 #'     focal_time = focal_time,
 #'     rate_type = "net_diversification",
+#'     uncertainty_strategy = "paired",
 #'     posthoc_pairwise_tests = TRUE,
 #'     return_perm_data = TRUE,
-#'     extract_diversification_data_melted_df = TRUE,
-#'     return_updated_trait_data_with_Map = TRUE,
+#'     return_updated_Maps = TRUE,
 #'     return_updated_BAMM_object = TRUE)
 #'
 #'  ## Explore output
@@ -395,8 +397,8 @@ plot_histogram_STRAPP_test_for_focal_time <- function (deepSTRAPP_outputs,
     ## plot_posthoc_tests
     if (plot_posthoc_tests)
     {
-      # plot_posthoc_tests = TRUE only for "multinominal" data
-      if (STRAPP_results$trait_data_type_for_stats != "multinominal")
+      # plot_posthoc_tests = TRUE only for "multinomial" data
+      if (STRAPP_results$trait_data_type_for_stats != "multinomial")
       {
         stop(paste0("'posthoc_pairwise_tests = TRUE' only makes sense for categorical/biogeographic data with more than two states/ranges.\n",
                     "Set 'posthoc_pairwise_tests = FALSE', or provide 'deepSTRAPP_outputs' for a trait with more than two states/ranges for the given 'focal_time'."))
@@ -451,20 +453,50 @@ plot_histogram_STRAPP_test_for_focal_time <- function (deepSTRAPP_outputs,
     }
   }
 
-  ## Save initial par() and reassign them on exit
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar))
+  ## Save the graphical parameters on entry and, on exit, restore only those this function actually changed.
+
+  # List graphical parameters describing the plot that now exists (Never to restore as they describe the current plot state)
+  plot_state_par_names <- c("usr", "plt", "fig", "mfg", "new", "xaxp", "yaxp", "pin")
+  # Save current graphic parameters
+  entry_par <- par(no.readonly = TRUE)
+
+  # On exit, compare changes in par and restore the ones that have change, but the plot_state_par
+  on.exit({
+    # List par on exit
+    exit_par <- par(no.readonly = TRUE)
+    # Identify differences with initial parameters
+    changed_par_names <- names(entry_par)[!vapply(X = names(entry_par),
+                                                  FUN = function (x) { isTRUE(all.equal(entry_par[[x]], exit_par[[x]])) },
+                                                  FUN.VALUE = logical(1))]
+    # Exclude plot state parameters from the restore
+    changed_par_names <- setdiff(changed_par_names, plot_state_par_names)
+    # Restore parameters if any has changed
+    if (length(changed_par_names) > 0)
+    {
+      par(entry_par[changed_par_names])
+    }
+
+    # Force new to FALSE, so the next plot calling plot.new() start on a new clean window,
+    # But only if we actually plot something
+    if (isTRUE(display_plot) || (isTRUE(exit_par$new) && !isTRUE(entry_par$new)))
+    {
+      par(new = FALSE)
+    }
+  }, add = TRUE)
+
 
   if (!plot_posthoc_tests)
   {
     ## Case for overall test plot
 
     # Extract name of the statistic
-    stat_name <- names(STRAPP_results$perm_data_df)[4]
+    stat_name <- names(STRAPP_results$perm_data_df)[ncol(STRAPP_results$perm_data_df)]
     # Extract null distribution of the statistic
     stat_null_distri <- STRAPP_results$perm_data_df[,stat_name]
     # Extract quantile of the critical threshold
     estimate_quantile <- names(STRAPP_results$estimate)
+    # Extract the number of stats in the null distribution
+    nb_stats <- nrow(STRAPP_results$perm_data_df)
 
     # Build ggplot object
     ggplot_histo <- ggplot2::ggplot(data = as.data.frame(stat_null_distri)) +
@@ -486,7 +518,8 @@ plot_histogram_STRAPP_test_for_focal_time <- function (deepSTRAPP_outputs,
       # alpha value : Estimate,  p-value
       annotate_npc(x = 0.05, y = 0.95, hjust = 0, vjust = 1, gp = grid::gpar(fontsize = 18),
                    label = paste0("Q", estimate_quantile, " = ", round(STRAPP_results$estimate, digits = 3), "\n",
-                                  "P-value = ", round(STRAPP_results$p_value, digits = 3))) +
+                                  "P-value = ", round(STRAPP_results$p_value, digits = 3), "\n",
+                                  "N = ", nb_stats)) +
 
       # Adjust axis labels
       ggplot2::labs(x = paste0("Distribution of the test statistics"),
@@ -552,15 +585,17 @@ plot_histogram_STRAPP_test_for_focal_time <- function (deepSTRAPP_outputs,
       # pair_i <- gsub(pattern = "!=", replacement = "\u2260", x = pair_i )
 
       # Extract name of the statistic
-      stat_name <- names(perm_data_df_i)[3]
+      stat_name <- names(perm_data_df_i)[ncol(perm_data_df_i)]
       # Extract null distribution of the statistic
-      stat_null_distri <- perm_data_df_i[,stat_name]
+      stat_null_distri <- unlist(perm_data_df_i[,stat_name])
       # Extract quantile of the critical threshold (same the one used for the main test)
       estimate_quantile <- names(STRAPP_results$estimate)
       # Extract estimate of the critical threshold
       estimate_value <- STRAPP_results$posthoc_pairwise_tests$summary_df$estimates[i]
       # Extract p-value
       p_value <- STRAPP_results$posthoc_pairwise_tests$summary_df$p_values[i]
+      # Extract nb of stats in the null distribution
+      nb_stats <- nrow(perm_data_df_i)
 
       # Detect if adjusted p-values differ from p-value
       p_value_adj_to_plot <- any(STRAPP_results$posthoc_pairwise_tests$summary_df$p_values != STRAPP_results$posthoc_pairwise_tests$summary_df$p_values_adjusted)
@@ -590,7 +625,8 @@ plot_histogram_STRAPP_test_for_focal_time <- function (deepSTRAPP_outputs,
         # alpha value : Estimate,  p-value
         annotate_npc(x = 0.05, y = 0.95, hjust = 0, vjust = 1, gp = grid::gpar(fontsize = 18/size_factor),
                      label = paste0("Q", estimate_quantile, " = ", round(estimate_value, digits = 3), "\n",
-                                    "P-value = ", round(p_value, digits = 3))) +
+                                    "P-value = ", round(p_value, digits = 3), "\n",
+                                    "N = ", nb_stats)) +
 
         # Adjust axis labels
         ggplot2::labs(x = paste0("Distribution of the test statistics"),

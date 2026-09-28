@@ -10,12 +10,12 @@ cut_densityMaps_for_focal_time(densityMaps, focal_time, keep_tip_labels = TRUE)
 \item{densityMaps}{List of objects of class \code{"densityMap"}, typically generated with \code{\link[=prepare_trait_data]{prepare_trait_data()}}.
 Each densityMap (see \code{\link[phytools:densityMap]{phytools::densityMap()}}) contains a phylogenetic tree and associated posterior probability mapping of a categorical trait.
 The phylogenetic tree must be rooted and fully resolved/dichotomous,
-but it does not need to be ultrametric (it can includes fossils).}
+but it does not need to be ultrametric (it can include fossils).}
 
-\item{focal_time}{Numerical. The time, in terms of time distance from the present,
+\item{focal_time}{Numeric. The time, in terms of time distance from the present,
 for which the tree and mapping must be cut. It must be smaller than the root age of the phylogeny.}
 
-\item{keep_tip_labels}{Logical. Specify whether terminal branches with a single descendant tip must retained their initial \code{tip.label}. Default is \code{TRUE}.}
+\item{keep_tip_labels}{Logical. Specify whether terminal branches with a single descendant tip must retain their initial \code{tip.label}. Default is \code{TRUE}.}
 }
 \value{
 The function returns an updated list of objects as cut densityMaps of class \code{"densityMap"}.
@@ -24,13 +24,13 @@ Each densityMap object contains three elements:
 \itemize{
 \item \verb{$tree} element of classes \code{"simmap"} and \code{"phylo"}. This function updates and adds multiple useful sub-elements to the \verb{$tree} element.
 \itemize{
-\item \verb{$maps} An updated list of named numerical vectors. Provides the mapping of posterior probability of the state along each remaining edge.
+\item \verb{$maps} An updated list of named numeric vectors. Provides the mapping of posterior probability of the state along each remaining edge.
 \item \verb{$mapped.edge} An updated matrix. Provides the evolutionary time spent across posterior probabilities (columns) along the remaining edges (rows).
 \item \verb{$root_age} Integer. Stores the age of the root of the tree.
 \item \verb{$nodes_ID_df} Data.frame with two columns. Provides the conversion from the \code{new_node_ID} to the \code{initial_node_ID}. Each row is a node.
-\item \verb{$initial_nodes_ID} Vector of character strings. Provides the initial ID of internal nodes. Used to plot internal node IDs as labels with \code{\link[ape:nodelabels]{ape::nodelabels()}}.
+\item \verb{$initial_nodes_ID} Character vector. Provides the initial ID of internal nodes. Used to plot internal node IDs as labels with \code{\link[ape:nodelabels]{ape::nodelabels()}}.
 \item \verb{$edges_ID_df} Data.frame with two columns. Provides the conversion from the \code{new_edge_ID} to the \code{initial_edge_ID}. Each row is an edge/branch.
-\item \verb{$initial_edges_ID} Vector of character strings. Provides the initial ID of edges/branches. Used to plot edge/branch IDs as labels with \code{\link[ape:nodelabels]{ape::edgelabels()}}.
+\item \verb{$initial_edges_ID} Character vector. Provides the initial ID of edges/branches. Used to plot edge/branch IDs as labels with \code{\link[ape:nodelabels]{ape::edgelabels()}}.
 }
 \item \verb{$col} element describes the colors used to map each possible posterior probability value from 0 to 1000.
 \item \verb{$states} element provide the name of the states. Here, the first value is the absence of the state labeled as "Not X" with X being the state.
@@ -42,7 +42,7 @@ High posterior probability reflects high likelihood to harbor the state. Low pro
 \description{
 Cuts off all the branches of the phylogeny which are
 younger than a specific time in the past (i.e. the \code{focal_time}).
-Branches overlapping the \code{focal_time} are shorten to the \code{focal_time}.
+Branches overlapping the \code{focal_time} are shortened to the \code{focal_time}.
 Likewise, remove posterior probability mapping of the categorical trait for the cut off branches
 by updating the \verb{$tree$maps} and \verb{$tree$mapped.edge} elements.
 }
@@ -131,8 +131,7 @@ plot_densityMaps_overlay(densityMaps = updated_mammals_densityMaps, fsize = 0.8)
 }
 \seealso{
 \code{\link[=cut_phylo_for_focal_time]{cut_phylo_for_focal_time()}} \code{\link[=cut_densityMap_for_focal_time]{cut_densityMap_for_focal_time()}}
-\code{\link[=extract_most_likely_trait_values_for_focal_time]{extract_most_likely_trait_values_for_focal_time()}}
-\code{\link[=extract_most_likely_states_from_densityMaps_for_focal_time]{extract_most_likely_states_from_densityMaps_for_focal_time()}}
+\code{\link[=extract_most_likely_trait_values_for_focal_time]{extract_most_likely_trait_values_for_focal_time()}} \code{\link[=extract_all_trait_values_for_focal_time]{extract_all_trait_values_for_focal_time()}}
 }
 \author{
 Maël Doré

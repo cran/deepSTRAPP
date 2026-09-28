@@ -3,8 +3,8 @@
 #'
 #' @description Plot on a time-calibrated phylogeny the evolution of diversification rates and
 #'   the location of regime shifts estimated from a BAMM (Bayesian Analysis of Macroevolutionary Mixtures).
-#'   Each branch is colored accroding to the estimated rates of speciation, extinction, or net diversification
-#'   stored in an object of class `bammdata`. Rates can vary along time, thus colors evolved along individual branches.
+#'   Each branch is colored according to the estimated rates of speciation, extinction, or net diversification
+#'   stored in an object of class `"bammdata"`. Rates can vary along time, thus colors evolve along individual branches.
 #'
 #'   This function is a wrapper of original functions from the R package `{BAMMtools}`:
 #'
@@ -21,29 +21,37 @@
 #'   * `method = "phylogram"` (default) plots the phylogenetic tree using rectangular coordinates.
 #'   * `method = "polar"` plots the phylogenetic tree using polar coordinates.
 #' @param add_regime_shifts Logical. Whether to add the location of regime shifts on the phylogeny (Step 2). Default is `TRUE`.
+#'   Provide the full argument name to avoid ambiguity with the `add` graphical argument.
 #' @param configuration_type A character string specifying how to select the location of regime shifts across posterior samples.
 #'   * `configuration_type = "MAP"`: Use the average locations recorded in posterior samples with the Maximum A Posteriori probability (MAP) configuration.
 #'     This regime shift configuration is the most frequent configuration among the posterior samples (See [BAMMtools::getBestShiftConfiguration()]).
 #'     This is the default option.
 #'   * `configuration_type = "MSC"`: Use the average locations recorded in posterior samples with the Maximum Shift Credibility (MSC) configuration.
 #'     This regime shift configuration has the highest product of marginal probabilities across branches (See [BAMMtools::maximumShiftCredibility()]).
-#'   * `configuration_type = "index"`: Use the configuration of a unique posterior sample those index is provided in `sample_index`.
+#'   * `configuration_type = "index"`: Use the configuration of a unique posterior sample whose index is provided in `sample_index`.
 #' @param sample_index Integer. Index of the posterior samples to use to plot the location of regime shifts.
 #'   Used only if `configuration_type = index`. Default = `1`.
 #' @param adjust_size_to_prob Logical. Whether to scale the size of the symbols showing the location of regime shifts according to
-#'   the marginal shift probability of the shift happening on each location/branch. This will only works if there is an `$MSP_tree` element
+#'   the marginal shift probability of the shift happening on each location/branch. This will only work if there is an `$MSP_tree` element
 #'   summarizing the marginal shift probabilities across branches in the `BAMM_object`. Default is `TRUE`.
+#'   Provide the full argument name to avoid ambiguity with the `adj` graphical argument.
 #' @param regimes_fill Character string. Set the color of the background of the symbols showing the location of regime shifts.
 #'   Equivalent to the `bg` argument in [BAMMtools::addBAMMshifts()]. Default is `"grey"`.
-#' @param regimes_size Numerical. Set the size of the symbols showing the location of regime shifts.
+#' @param regimes_size Numeric. Set the size of the symbols showing the location of regime shifts.
 #'   Equivalent to the `cex` argument in [BAMMtools::addBAMMshifts()]. Default is `1`.
 #' @param regimes_pch Integer. Set the shape of the symbols showing the location of regime shifts.
 #'   Equivalent to the `pch` argument in [BAMMtools::addBAMMshifts()]. Default is `21`.
 #' @param regimes_border_col Character string. Set the color of the border of the symbols showing the location of regime shifts.
 #'   Equivalent to the `col` argument in [BAMMtools::addBAMMshifts()]. Default is `"black"`.
-#' @param regimes_border_width Numerical. Set the width of the border of the symbols showing the location of regime shifts.
+#' @param regimes_border_width Numeric. Set the width of the border of the symbols showing the location of regime shifts.
 #'   Equivalent to the `lwd` argument in [BAMMtools::addBAMMshifts()]. Default is `1`.
 #' @param ... Additional graphical arguments to pass down to [BAMMtools::plot.bammdata()], [BAMMtools::addBAMMshifts()], and [par()].
+#'   Among them, `par.reset` is ignored, with a message: it would make [BAMMtools::plot.bammdata()]
+#'   restore a full par() snapshot, discarding the coordinate system of the phylogeny and rewinding
+#'   the panel counter of a multi-panel layout. Graphical parameters are instead restored by
+#'   `plot_BAMM_rates()` when it exits: every parameter the call actually changed is put back, except
+#'   those describing the plot itself, which are kept so that the phylogeny can be annotated
+#'   afterwards with for instance [graphics::abline()] or [graphics::title()], as in the examples.
 #' @param display_plot Logical. Whether to display the plot generated in the R console. Default is `TRUE`.
 #' @param PDF_file_path Character string. If provided, the plot will be saved in a PDF file following the path provided here. The path must end with ".pdf".
 #'
@@ -52,21 +60,21 @@
 #' @importFrom BAMMtools plot.bammdata addBAMMshifts
 #'
 #' @details The main input `BAMM_object` is the typical output of [deepSTRAPP::prepare_diversification_data()].
-#'   It provides information on rates and regimes shifts across the posterior samples of a BAMM.
+#'   It provides information on rates and regime shifts across the posterior samples of a BAMM.
 #'
 #'   `$MAP_BAMM_object` and `$MSC_BAMM_object` elements are required to plot regime shift locations following the
 #'   "MAP" or "MSC" `configuration_type` respectively.
-#'   A `$MSP_tree` element is required to scale the size of the symbols showing the location of regime shifts according marginal shift probabilities.
+#'   A `$MSP_tree` element is required to scale the size of the symbols showing the location of regime shifts according to marginal shift probabilities.
 #'   (If `adjust_size_to_prob = TRUE`).
 #'
 #'   The default option to display regime shift is to use the average locations from the posterior samples with the Maximum A Posteriori probability (MAP) configuration.
-#'   However, sometimes, multiple configurations have similarly high frequency in the posterior samples (See [BAMMtools::credibleShiftSet()].
+#'   However, sometimes, multiple configurations have similarly high frequency in the posterior samples (See [BAMMtools::credibleShiftSet()]).
 #'   An alternative is to use the average locations from posterior samples with the Maximum Shift Credibility (MSC) configuration instead.
 #'   This regime shift configuration has the highest product of marginal probabilities across branches where a shift is estimated.
 #'   It may differ from the MAP configuration. (See [BAMMtools::maximumShiftCredibility()]).
 #'
-#' @return The function returns (invisibly) a list with three three elements similarly to [BAMMtools::plot.bammdata()].
-#'  * `$coords`: A matrix of plot coordinates. Rows correspond to branches. Columns 1-2 are starting (x,y) coordinates of each branch and columns 3-4 are ending (x,y) coordinates of each branch. If method = "polar" a fifth column gives the angle(in radians) of each branch.
+#' @return The function returns (invisibly) a list with three elements similarly to [BAMMtools::plot.bammdata()].
+#'  * `$coords`: A matrix of plot coordinates. Rows correspond to branches. Columns 1-2 are starting (x,y) coordinates of each branch and columns 3-4 are ending (x,y) coordinates of each branch. If method = "polar" a fifth column gives the angle (in radians) of each branch.
 #'  * `$colorbreaks`: A vector of percentiles used to group macroevolutionary rates into color bins.
 #'  * `$colordens`: A matrix of the kernel density estimates (column 2) of evolutionary rates (column 1) and the color (column 3) corresponding to each rate value.
 #'
@@ -81,45 +89,66 @@
 #' # Load BAMM output
 #' data(whale_BAMM_object, package = "deepSTRAPP")
 #'
+#' mfrow_ini <- par()$mfrow
+#' par(mfrow = c(1,2))
+#'
 #' ## Plot overall mean rates with MAP configuration for regime shifts
-#' # (rates are averaged only all posterior samples)
-#' plot_BAMM_rates(whale_BAMM_object, add_regime_shifts = TRUE,
-#'                 configuration_type = "MAP", bg = "black",
-#'                 regimes_size = 3)
+#' # (rates are averaged across all posterior samples)
+#' plot_BAMM_rates(whale_BAMM_object, # Use the full object to plot mean overall rates
+#'                 add_regime_shifts = TRUE,
+#'                 configuration_type = "MAP",
+#'                 regimes_size = 3, bg = "black")
+#' title("Overall mean - MAP shift config", col.main = "white")
+#'
 #' ## Plot overall mean rates with MSC configuration for regime shifts
-#' # (rates are averaged only all posterior samples)
+#' # (rates are averaged across all posterior samples)
 #' plot_BAMM_rates(whale_BAMM_object, add_regime_shifts = TRUE,
-#'                 configuration_type = "MSC", bg = "black",
-#'                 regimes_size = 3)
+#'                 configuration_type = "MSC",
+#'                 regimes_size = 3, bg = "black")
+#' title("Overall mean - MSC shift config", col.main = "white")
+#'
+#' par(mfrow_ini)
+#'
+#'
+#' mfrow_ini <- par()$mfrow
+#' par(mfrow = c(1,2))
 #'
 #' ## Plot mean MAP rates with regime shifts
 #' # (rates are averaged only across MAP samples)
-#' plot_BAMM_rates(whale_BAMM_object$MAP_BAMM_object, add_regime_shifts = TRUE,
+#' plot_BAMM_rates(whale_BAMM_object$MAP_BAMM_object, # Use the MAP object to plot mean MAP rates
+#'                 add_regime_shifts = TRUE,
 #'                 configuration_type = "index",
-#'                 # Set to index to use the regime shift data from the '$MAP_BAMM_object'
-#'                 regimes_size = 3, bg = "black")
-#' ## Plot mean MSC rates (rates averaged only across MSC samples) with regime shifts
+#'                 # Set to index to use the regime shift location from MAP configuration
+#'                 regimes_size = 3)
+#' title("MAP mean - MAP shift config")
+#'
+#' ## Plot mean MSC rates with regime shifts
 #' # (rates averaged only across MSC samples)
-#' plot_BAMM_rates(whale_BAMM_object$MSC_BAMM_object, add_regime_shifts = TRUE,
+#' plot_BAMM_rates(whale_BAMM_object$MSC_BAMM_object, # Use the MSC object to plot mean MSC rates
+#'                 add_regime_shifts = TRUE,
 #'                 configuration_type = "index",
-#'                 # Set to index to use the regime shift data from the '$MSC_BAMM_object'
-#'                 regimes_size = 3, bg = "black")
+#'                 # Set to index to use the regime shift data from MSC configuration
+#'                 regimes_size = 3)
+#' title("MSC mean - MSC shift config")
+#'
+#' par(mfrow_ini)
+#'
 #'
 
 
 plot_BAMM_rates <- function (BAMM_object,
                              rate_type = "net_diversification",
                              method = "phylogram",
-                             add_regime_shifts = TRUE,
                              configuration_type = "MAP", # MAP, MSC, or index
                              sample_index = 1,
-                             adjust_size_to_prob = TRUE, # To adjust size of points representing regime shifts to their marginal posterior probabilities
                              regimes_fill = "grey", # Replace 'bg' argument in BAMMtools::addBAMMshifts()
                              regimes_size = 1, # Replace 'cex' argument in BAMMtools::addBAMMshifts()
                              regimes_pch = 21, # Replace 'pch' argument in BAMMtools::addBAMMshifts()
                              regimes_border_col = "black", # Replace 'col' argument in BAMMtools::addBAMMshifts()
                              regimes_border_width = 1, # Replace 'lwd' argument in BAMMtools::addBAMMshifts()
                              ..., # To pass down to BAMMtools::plot.bammdata(), BAMMtools::addBAMMshifts(), and par()
+                             add_regime_shifts = TRUE, # Placed after ... so any 'add' argument provided is not captured by 'add_regime_shifts'
+                             adjust_size_to_prob = TRUE, # Placed after ... so any 'adj' argument provided is not captured by 'adjust_size_to_prob'
                              display_plot = TRUE,
                              PDF_file_path = NULL)
 {
@@ -193,16 +222,52 @@ plot_BAMM_rates <- function (BAMM_object,
     }
   }
 
-  ## Save initial par() and reassign them on exit
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar))
+  # Restore only the graphical parameters that needs to be restored
 
   ## Convert 'rate_type' into 'spex'
   if (rate_type == "net_diversification") { spex <- "netdiv" }
   if (rate_type == "speciation") { spex <- "s" }
   if (rate_type == "extinction") { spex <- "e" }
 
-  ## Filter list of additional arguments to avoid warnings from par()
+  ## Restore, on exit, every graphical parameter that this call changed
+  # Everything is restored, whether it was set by this function, by the BAMMtools functions it
+  # calls, or passed by the user through '...'. The only exceptions are the parameters describing
+  # the plot that was just drawn: restoring those rewinds the panel counter of a multi-panel
+  # layout, and discards the coordinate system of the phylogeny, which makes it impossible to
+  # annotate the plot afterwards and breaks multi-facetting.
+
+  # List graphical parameters describing the plot that now exists (Never to restore as they describe the current plot state)
+  plot_state_par_names <- c("usr", "plt", "fig", "mfg", "new", "xaxp", "yaxp", "pin")
+  # Save current graphic parameters
+  entry_par <- par(no.readonly = TRUE)
+  # Read now, not on exit, as it may be reassigned later in the function
+  entry_display_plot <- isTRUE(display_plot)
+
+  # On exit, compare changes in par and restore the ones that have change, but the plot_state_par
+  on.exit({
+    # List par on exit
+    exit_par <- par(no.readonly = TRUE)
+    # Identify differences with initial parameters
+    changed_par_names <- names(entry_par)[!vapply(X = names(entry_par),
+                                                  FUN = function (x) { isTRUE(all.equal(entry_par[[x]], exit_par[[x]])) },
+                                                  FUN.VALUE = logical(1))]
+    # Exclude plot state parameters from the restore
+    changed_par_names <- setdiff(changed_par_names, plot_state_par_names)
+    # Restore parameters if any has changed
+    if (length(changed_par_names) > 0)
+    {
+      par(entry_par[changed_par_names])
+    }
+
+    # Force new to FALSE, so the next plot calling plot.new() start on a new clean window,
+    # But only if we actually plot something
+    if (entry_display_plot || (isTRUE(exit_par$new) && !isTRUE(entry_par$new)))
+    {
+      par(new = FALSE)
+    }
+  }, add = TRUE)
+
+  ## Filter list of additional arguments and distribute across subfunctions to avoid warnings from par()
   add_args <- list(...)
   args_names_for_plot <- c("tau", "xlim", "ylim", "vtheta", "rbf", "show", "labels", "legend",
                            "spex", "lwd", "cex", "pal", "mask", "mask.color", "colorbreaks", "logcolor",
@@ -233,8 +298,20 @@ plot_BAMM_rates <- function (BAMM_object,
   if ("breaksmethod" %in% names(add_args_for_plot)) { breaksmethod <- add_args_for_plot$breaksmethod } else { breaksmethod <- "linear" }
   if ("color.interval" %in% names(add_args_for_plot)) { color.interval <- add_args_for_plot$color.interval } else { color.interval <- NULL }
   if ("JenksSubset" %in% names(add_args_for_plot)) { JenksSubset <- add_args_for_plot$JenksSubset } else { JenksSubset <- 20000 }
-  if ("par.reset" %in% names(add_args_for_plot)) { par.reset <- add_args_for_plot$par.reset } else { par.reset <- TRUE } # Set to TRUE to avoid affecting next plots
   if ("direction" %in% names(add_args_for_plot)) { direction <- add_args_for_plot$direction } else { direction <- "rightwards" }
+
+  ## Deal with par.reset
+  # 'par.reset' is passed down to [BAMMtools::plot.bammdata()] and [deepSTRAPP:::addBAMMshifts_custom()].
+  # Both restore a full par(no.readonly = TRUE) snapshot when it is TRUE, which prevent annotation and breaks faceting.
+  # Thus, the default behavior is to not restore all par() parameters but rather restore on exit
+  # only the relevant parameters, without side effects on annotation and facetting.
+  if ("par.reset" %in% names(add_args_for_plot))
+  {
+    message(paste0("'par.reset' is not used by deepSTRAPP::plot_BAMM_rates() and was ignored.\n",
+                   "Graphical parameters are restored when the function exits, except those describing\n",
+                   "the plot itself, which are kept so that the phylogeny can be annotated afterwards."))
+  }
+  par.reset <- FALSE
 
   ## Display plot if requested
   if (display_plot)
@@ -260,7 +337,7 @@ plot_BAMM_rates <- function (BAMM_object,
       add_args <- list(...)
       add_args_for_addBAMMshifts <- add_args[names(add_args) %in% args_names_for_addBAMMshifts]
       if ("shiftnodes" %in% names(add_args_for_addBAMMshifts)) { shiftnodes <- add_args_for_addBAMMshifts$shiftnodes } else { shiftnodes <- NULL }
-      if ("par.reset" %in% names(add_args_for_addBAMMshifts)) { par.reset <- add_args_for_addBAMMshifts$par.reset } else { par.reset <- TRUE }
+      par.reset <- FALSE   # Always FALSE, whatever the user passed. See the note above.
       add_args_for_par <- add_args_for_par[!(names(add_args_for_par) %in% c("bg", "cex", "pch", "col", "lwd"))]
 
       # Provide Marginal Shift Probabilities to adjust size if requested
@@ -392,7 +469,7 @@ plot_BAMM_rates <- function (BAMM_object,
       add_args <- list(...)
       add_args_for_addBAMMshifts <- add_args[names(add_args) %in% args_names_for_addBAMMshifts]
       if ("shiftnodes" %in% names(add_args_for_addBAMMshifts)) { shiftnodes <- add_args_for_addBAMMshifts$shiftnodes } else { shiftnodes <- NULL }
-      if ("par.reset" %in% names(add_args_for_addBAMMshifts)) { par.reset <- add_args_for_addBAMMshifts$par.reset } else { par.reset <- TRUE }
+      par.reset <- FALSE   # Always FALSE, whatever the user passed. See the note above.
       add_args_for_par <- add_args_for_par[!(names(add_args_for_par) %in% c("bg", "cex", "pch", "col", "lwd"))]
 
       # Provide Marginal Shift Probabilities to adjust size if requested
@@ -511,7 +588,7 @@ plot_BAMM_rates <- function (BAMM_object,
 
 addBAMMshifts_custom <- function (ephy, index = 1, method = "phylogram", regimes_size = 1, regimes_pch = 21,
                                   regimes_border_col = 1, regimes_border_width = 1, regimes_fill = 2,
-                                  msp = NULL, shiftnodes = NULL, par.reset = TRUE, ...)
+                                  msp = NULL, shiftnodes = NULL, par.reset = FALSE, ...)
 {
   if (!inherits(ephy, "bammdata"))
     stop("Object ephy must be of class bammdata")

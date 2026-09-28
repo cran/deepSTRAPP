@@ -77,7 +77,7 @@ knitr::opts_chunk$set(
 # 
 # # 1.1/ Fit evolutionary models to trait data using Maximum Likelihood.
 # # 1.2/ Select the best fitting model comparing AICc.
-# # 1.3/ Infer ancestral characters estimates (ACE) at nodes.
+# # 1.3/ Infer ancestral character estimates (ACE) at nodes.
 # # 1.4/ Run stochastic mapping simulations to generate evolutionary histories
 # #      compatible with the best model and inferred ACE.
 # # 1.5/ Infer ancestral states along branches.
@@ -105,15 +105,15 @@ knitr::opts_chunk$set(
 #        # Ex: A <-> B = A <-> C.
 #  # "SYM": Symmetric model.
 #     # Forward and reverse transitions share the same parameter,
-#     # but transitions between diffrent states have different rates.
+#     # but transitions between different states have different rates.
 #        # Ex: (A -> B = B -> A) ≠ (A -> C = C -> A).
 #  # "ARD": All-Rates-Different model.
 #     # Each transition rate is a unique parameter.
 #         # Ex: A -> B ≠ B -> A ≠ A -> C ≠ C -> A.
-#  # "meristic": Step-stone model
+#  # "meristic": Stepping-stone model
 #     # Transitions occur in a step-wise ordered fashion (e.g., 1 <-> 2 <-> 3).
 #     # Transitions between non-adjacent states are forbidden (e.g., 1 <-> 3 is forbidden).
-#     # Transitions rates are assumed to be symmetrical.
+#     # Transition rates are assumed to be symmetrical.
 #         # Ex: (1 -> 2 = 2 -> 1) ≠ (2 -> 3 = 3 -> 2), with 1 <-> 3 set to zero.
 #  # "matrix": Custom model.
 #     # Allows to provide a custom "Q_matrix" defining transition classes between states.
@@ -138,7 +138,7 @@ knitr::opts_chunk$set(
 #     seed = 1234, # Set seed for reproducibility
 #     evolutionary_models = c("ER", "SYM", "ARD", "meristic", "matrix"), # All possible models
 #     Q_matrix = Q_matrix, # Custom transition rate classes matrix for the "matrix" model
-#     transform = "lambda", # Example of additional parameters that can be pass down
+#     transform = "lambda", # Example of additional parameters that can be passed down
 #     # to geiger::fitDiscrete() to control tree transformation.
 #     res = 100, # To set the resolution of the continuous mapping of states on the densityMaps
 #     # Reduce the number of Stochastic Mapping simulations to save time (Default = '1000')
@@ -146,10 +146,13 @@ knitr::opts_chunk$set(
 #     colors_per_levels = colors_per_states,
 #     # Plot the densityMaps with plot_densityMaps_overlay() to show all states at once.
 #     plot_overlay = TRUE,
-#     # To export in PDF the densityMaps generated (Here a single map as 'plot_overlay = TRUE')
+#     # To export to PDF the generated densityMaps (Here a single map as 'plot_overlay = TRUE')
 #     # PDF_file_path = "./eel_densityMaps_overlay.pdf",
 #     return_ace = TRUE, # To include Ancestral Character Estimates (ACE) at nodes in the output
-#     return_simmaps = TRUE, # To include the Stochastic Mapping simulations (simmaps) in the output
+#     # To include the Stochastic Mapping simulations (simmaps) in the output
+#     # This is needed if you want to keep track of which simulation produced which states
+#     # used to compute the tests in deepSTRAPP
+#     return_simmaps = TRUE,
 #     return_best_model_fit = TRUE, # To include the best model fit in the output
 #     return_model_selection_df = TRUE, # To include the df for model selection in the output
 #     verbose = TRUE) # To display progress
@@ -170,9 +173,10 @@ knitr::opts_chunk$set(
 # plot(eel_densityMaps[[2]]) # densityMap for state n°2 ("kiss")
 # plot(eel_densityMaps[[3]]) # densityMap for state n°3 ("suction")
 # 
-# # Plot all densityMaps overlaid in on a single phylogeny.
+# # Plot all densityMaps overlaid on a single phylogeny.
 # # Each color highlights presence of its associated state.
 # plot_densityMaps_overlay(eel_densityMaps)
+# title(main = "\nAncestral States - Initial color scheme")
 # 
 # # Plot with a new color scheme
 # new_colors_per_states <- c("red", "pink", "goldenrod")
@@ -182,15 +186,14 @@ knitr::opts_chunk$set(
 #     densityMaps = eel_densityMaps,
 #     colors_per_levels = new_colors_per_states)
 #     # PDF_file_path = "./eel_densityMaps_overlay_new_colors.pdf")
-# 
-# # The densityMaps are the main input needed to perform a deepSTRAPP run on categorical trait data.
+# title(main = "\nAncestral States - New color scheme")
 # 
 # ## Extract the Ancestral Character Estimates (ACE) = trait values at nodes
 # eel_ACE <- eel_cat_3lvl_data$ace
 # head(eel_ACE)
 # # This is a matrix with row.names = internal node ID, colnames = ancestral states,
 # # and values = posterior probabilities.
-# # It can be used as an optional input in deepSTRAPP run to provide perfectly accurate estimates
+# # It can be used as an optional input in a deepSTRAPP run to provide perfectly accurate estimates
 # # for ancestral states at internal nodes.
 # 
 # ## Explore summary of model selection
@@ -201,7 +204,7 @@ knitr::opts_chunk$set(
 # # Here, the best model is the Equal-Rates model ('ER')
 # 
 # ## Explore best model fit (ER model)
-# eel_cat_3lvl_data$best_model_fit # Summary of best model optimization by geiger::fitContinuous()
+# eel_cat_3lvl_data$best_model_fit # Summary of best model optimization by geiger::fitDiscrete()
 # eel_cat_3lvl_data$best_model_fit$opt # Parameter estimates and goodness-of-fit information
 # # Unique transition parameter = 0.0208 transitions per branch per My.
 # 
@@ -209,20 +212,28 @@ knitr::opts_chunk$set(
 # # Since we selected 'return_simmaps = TRUE',
 # # Stochastic Mapping simulations (simmaps) are included in the output
 # # Each simmap represents a simulated evolutionary history with final states compatible
-# # with the tip_data and estimated ACE at nodes.
+# # with the tip_data and estimated ACE at nodes = conditioned by tip data and model fit.
 # # Each simmap also follows the transition parameters of the best fit model
 # # to simulate transitions along branches.
+# eel_simmaps <- eel_cat_3lvl_data$simmaps
 # 
 # # Plot simmap n°1 using the same color scheme as in densityMaps
-# plot(eel_cat_3lvl_data$simmaps[[1]], colors = colors_per_states, fsize = 0.7)
+# plot(eel_simmaps[[1]], colors = colors_per_states, fsize = 0.7)
+# title(main = "\nStochastic Mapping simulation n°1")
 # # Plot simmap n°10 using the same color scheme as in densityMaps
-# plot(eel_cat_3lvl_data$simmaps[[10]], colors = colors_per_states, fsize = 0.7)
+# plot(eel_simmaps[[10]], colors = colors_per_states, fsize = 0.7)
+# title(main = "\nStochastic Mapping simulation n°10")
 # # Plot simmap n°100 using the same color scheme as in densityMaps
-# plot(eel_cat_3lvl_data$simmaps[[100]], colors = colors_per_states, fsize = 0.7)
+# plot(eel_simmaps[[100]], colors = colors_per_states, fsize = 0.7)
+# title(main = "\nStochastic Mapping simulation n°100")
 # 
 # 
-# ## Inputs needed to run deepSTRAPP are the densityMaps (eel_densityMaps), and optionally,
-# ## the tip_data (eel_tip_data), and the ACE (eel_ACE)
+# ## The minimal inputs needed to run deepSTRAPP are the densityMaps (eel_densityMaps).
+# ## However, densityMaps only records the frequency of trait states across simulations.
+# ## If you want to keep track of which simulation (simmap) produced which states,
+# ## you need to provide the full sets of stochastic maps (eel_simmaps) as inputs.
+# ## Optionally, you can provide the tip_data (eel_tip_data) and the ACE (eel_ACE) to force
+# ## the use of the exact states recorded at tips and nodes (in practice, the difference is negligible).
 # 
 # 
 
@@ -236,8 +247,9 @@ names(colors_per_states) <- c("bite", "kiss", "suction")
 
 ## Plot densityMaps
 
-# Plot all densityMaps overlaid in on a single phylogeny.
+# Plot all densityMaps overlaid on a single phylogeny.
 plot_densityMaps_overlay(eel_cat_3lvl_data$densityMaps, fsize = 0.6)
+title(main = "\nAncestral States - Initial color scheme")
 
 # Plot with a new color scheme
 new_colors_per_states <- c("red", "pink", "goldenrod")
@@ -247,6 +259,7 @@ plot_densityMaps_overlay(
     densityMaps = eel_cat_3lvl_data$densityMaps,
     colors_per_levels = new_colors_per_states,
     fsize = 0.6)
+title(main = "\nAncestral States - New color scheme")
 
 ## Explore summary of model selection
 eel_cat_3lvl_data$model_selection_df # Summary of model selection
@@ -257,5 +270,8 @@ title(main = "\nStochastic Mapping simulation n°1")
 
 plot(eel_cat_3lvl_data$simmaps[[10]], colors = colors_per_states, fsize = 0.7)
 title(main = "\nStochastic Mapping simulation n°10")
+
+plot(eel_cat_3lvl_data$simmaps[[100]], colors = colors_per_states, fsize = 0.7)
+title(main = "\nStochastic Mapping simulation n°100")
 
 

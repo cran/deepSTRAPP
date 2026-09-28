@@ -50,10 +50,11 @@ if (deepSTRAPP::is_dev_version())
  ## Prepare phylo
 
  # Set path to BioGeoBEARS directory
- BioGeoBEARS_directory_path = "./BioGeoBEARS_directory/"
+ BioGeoBEARS_directory_path = tempfile("BioGeoBEARS_directory_")
+ dir.create(BioGeoBEARS_directory_path, recursive = TRUE, showWarnings = FALSE)
 
  # Export phylo
- path_to_phylo <- BioGeoBEARS::np(paste0(BioGeoBEARS_directory_path, "phylo.tree"))
+ path_to_phylo <- BioGeoBEARS::np(file.path(BioGeoBEARS_directory_path, "phylo.tree"))
  write.tree(phy = eel.tree, file = path_to_phylo)
 
  ## Prepare range data
@@ -66,7 +67,7 @@ if (deepSTRAPP::is_dev_version())
  unique_areas <- unique(unlist(unique_areas_in_ranges_list))
  unique_areas <- unique_areas[order(unique_areas)]
 
- # Loop per unique areas
+ # Loop per unique area
  for (i in seq_along(unique_areas))
  {
    # i <- 1
@@ -82,7 +83,7 @@ if (deepSTRAPP::is_dev_version())
  }
  # Extract binary df of presence/absence
  binary_df <- ranges_df[, -1]
- # Convert character strings into numerical factors
+ # Convert character strings into numeric factors
  binary_df_num <- as.data.frame(apply(X = binary_df, MARGIN = 2, FUN = as.numeric))
  row.names(binary_df_num) <- names(tip_data)
  names(binary_df_num) <- unique_areas
@@ -91,7 +92,7 @@ if (deepSTRAPP::is_dev_version())
  Taxa_bioregions_tipranges_obj <- BioGeoBEARS::define_tipranges_object(tmpdf = binary_df_num)
 
  # Set path to tip ranges object
- path_to_tip_ranges <- BioGeoBEARS::np(paste0(BioGeoBEARS_directory_path,"tip_ranges.data"))
+ path_to_tip_ranges <- BioGeoBEARS::np(file.path(BioGeoBEARS_directory_path, "tip_ranges.data"))
 
  # Export tip ranges in Lagrange/PHYLIP format
  BioGeoBEARS::save_tipranges_to_LagrangePHYLIP(

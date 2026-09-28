@@ -18,7 +18,8 @@ plot_rates_through_time(
   display_plot = TRUE,
   PDF_file_path = NULL,
   return_mean_data_per_samples_df = FALSE,
-  return_median_data_across_samples_df = FALSE
+  return_median_data_across_samples_df = FALSE,
+  verbose = TRUE
 )
 }
 \arguments{
@@ -33,7 +34,7 @@ Even if the \code{deepSTRAPP_outputs} object was generated with \code{\link[=run
 for testing another type of rates, the \verb{$trait_data_df_over_time} and \verb{$diversification_data_df_over_time} data frames
 will contain data for all types of rates.}
 
-\item{quantile_ranges}{Vector of numerical. Only for continuous trait data. Quantiles used as thresholds to group branches
+\item{quantile_ranges}{Numeric vector. Only for continuous trait data. Quantiles used as thresholds to group branches
 by trait values. It must start with 0 and finish with 1. Default is \code{c(0, 0.25, 0.5, 0.75, 1.0)}
 which produces four balanced quantile groups.}
 
@@ -41,10 +42,10 @@ which produces four balanced quantile groups.}
 To provide a list of a subset of states/ranges to plot. Names must match the ones found in
 \code{deepSTRAPP_outputs$trait_data_df_over_time$trait_value}. Default is \code{all} which means all states/ranges will be plotted.}
 
-\item{time_range}{Vector of two numerical values. Time boundaries used for the plot.
+\item{time_range}{Numeric vector of length 2. Time boundaries used for the plot.
 If \code{NULL} (the default), the range of data provided in \code{deepSTRAPP_outputs} will be used.}
 
-\item{color_scale}{Vector of character string. List of colors to use to build the color scale with \code{\link[grDevices:colorRamp]{grDevices::colorRampPalette()}}
+\item{color_scale}{Character vector. List of colors to use to build the color scale with \code{\link[grDevices:colorRamp]{grDevices::colorRampPalette()}}
 to display the quantile groups used to discretize the continuous trait data. From lowest values to highest values. Only for continuous data.
 Default = \code{NULL} will use the 'Spectral' color palette in \code{\link[RColorBrewer:ColorBrewer]{RColorBrewer::brewer.pal()}}.}
 
@@ -60,35 +61,37 @@ If \code{NULL} (default), the default ggplot2 color palette (\code{\link[scales:
 This proportion is defined with \code{CI_quantiles}.
 }}
 
-\item{CI_quantiles}{Numerical. Proportion of rate values across posterior samples encompassed by the confidence interval. Only if \code{CI_type = "quantiles_rect"}. Default is \code{0.95}.}
+\item{CI_quantiles}{Numeric. Proportion of rate values across posterior samples encompassed by the confidence interval. Only if \code{CI_type = "quantiles_rect"}. Default is \code{0.95}.}
 
 \item{display_plot}{Logical. Whether to display the plot generated in the R console. Default is \code{TRUE}.}
 
 \item{PDF_file_path}{Character string. If provided, the plot will be saved in a PDF file following the path provided here. The path must end with ".pdf".}
 
 \item{return_mean_data_per_samples_df}{Logical. Whether to include in the output the data.frame of mean rates per trait values computed for
-each posterior sample at each time-step (aggregated across groups of branches based on trait data). This is used to draw the confidence interval. Default is \code{FALSE}.}
+each stochastic map X BAMM posterior sample at each time-step (aggregated across groups of branches based on trait data). This is used to draw the confidence interval. Default is \code{FALSE}.}
 
 \item{return_median_data_across_samples_df}{Logical. Whether to include in the output the data.frame of median rates per trait values
-across posterior samples computed for at each time-step (aggregated across groups of branches based on trait data AND posterior samples).
-This is used to draw the lines on the plot. Default is \code{FALSE}.}
+across stochastic maps X BAMM posterior samples computed at each time-step (aggregated across groups of branches based on trait data AND stochastic maps X BAMM posterior samples).
+This is used to draw the median lines on the plot. Default is \code{FALSE}.}
+
+\item{verbose}{Logical. Should progression be displayed? Default is \code{TRUE}.}
 }
 \value{
 The function returns a list with at least one element.
 \itemize{
 \item \code{rates_TT_ggplot} An object of classes \code{gg} and \code{ggplot}. This is a ggplot that can be displayed
 on the console with \code{print(output$rates_TT_ggplot)}. It corresponds to the plot being displayed on the console
-when the function is run, if \code{display_plot = TRUE}, and can be further modify for aesthetics using the ggplot2 grammar.
+when the function is run, if \code{display_plot = TRUE}, and can be further modified for aesthetics using the ggplot2 grammar.
 }
 
 Optional summary data frames:
 \itemize{
-\item \code{mean_data_per_samples_df} A data.frame with four columns providing the \verb{$mean_rates} observed along branches
+\item \code{mean_data_per_samples_df} A data.frame with five columns providing the \verb{$mean_rates} observed along branches
 with a similar \verb{$trait_value} (if categorical or biogeographic) or falling into the same \verb{$quantile_ranges}.
-Data are extracted for each posterior sample (\verb{$BAMM_sample_ID}) at each time-step (i.e., \verb{$focal_time}).
+Data are extracted for each stochastic map (\verb{$Map_ID}) X BAMM posterior sample (\verb{$BAMM_sample_ID}) used for the STRAPP tests at each time-step (i.e., \verb{$focal_time}).
 This is used to draw the confidence interval. Included if \code{return_mean_data_per_samples_df = TRUE}.
 \item \verb{$median_data_across_samples_df} A data.frame with three columns providing the \verb{$median_rates}
-observed across all posterior samples in \verb{$mean_data_per_samples_df}. This is used to draw the lines on the plot.
+observed across all stochastic maps X BAMM posterior samples used for the STRAPP tests in \verb{$mean_data_per_samples_df}. This is used to draw the lines on the plot.
 Included if \code{return_median_data_across_samples_df = TRUE}.
 }
 
@@ -112,7 +115,8 @@ Rates are averaged across branches at each time step (i.e., \code{focal_time}).
 if (deepSTRAPP::is_dev_version())
 {
   ## Load results of run_deepSTRAPP_over_time()
-  data(Ponerinae_deepSTRAPP_cont_old_calib_0_40, package = "deepSTRAPP")
+  Ponerinae_deepSTRAPP_cont_old_calib_0_40 <- readRDS(system.file("extdata",
+     "Ponerinae_deepSTRAPP_cont_old_calib_0_40.rds", package = "deepSTRAPP"))
   ## This dataset is only available in development versions installed from GitHub.
   # It is not available in CRAN versions.
   # Use remotes::install_github(repo = "MaelDore/deepSTRAPP") to get the latest development version.
@@ -156,7 +160,8 @@ if (deepSTRAPP::is_dev_version())
 if (deepSTRAPP::is_dev_version())
 {
   ## Load results of run_deepSTRAPP_over_time()
-  data(Ponerinae_deepSTRAPP_cat_3lvl_old_calib_0_40, package = "deepSTRAPP")
+  Ponerinae_deepSTRAPP_cat_3lvl_old_calib_0_40 <- readRDS(system.file("extdata",
+     "Ponerinae_deepSTRAPP_cat_3lvl_old_calib_0_40.rds", package = "deepSTRAPP"))
   ## This dataset is only available in development versions installed from GitHub.
   # It is not available in CRAN versions.
   # Use remotes::install_github(repo = "MaelDore/deepSTRAPP") to get the latest development version.
@@ -199,7 +204,8 @@ if (deepSTRAPP::is_dev_version())
 if (deepSTRAPP::is_dev_version())
 {
   ## Load results of run_deepSTRAPP_over_time()
-  data(Ponerinae_deepSTRAPP_biogeo_old_calib_0_40, package = "deepSTRAPP")
+  Ponerinae_deepSTRAPP_biogeo_old_calib_0_40 <- readRDS(system.file("extdata",
+     "Ponerinae_deepSTRAPP_biogeo_old_calib_0_40.rds", package = "deepSTRAPP"))
   ## This dataset is only available in development versions installed from GitHub.
   # It is not available in CRAN versions.
   # Use remotes::install_github(repo = "MaelDore/deepSTRAPP") to get the latest development version.

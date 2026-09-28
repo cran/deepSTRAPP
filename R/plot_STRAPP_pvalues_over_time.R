@@ -2,29 +2,29 @@
 #' @title Plot evolution of p-values of STRAPP tests over time
 #'
 #' @description Plot the evolution of the p-values of STRAPP tests
-#'   carried out for across multiple `time_steps`, obtained from
+#'   carried out across multiple `time_steps`, obtained from
 #'   [deepSTRAPP::run_deepSTRAPP_over_time()].
 #'
 #'   By default, return a plot with a single line for p-values of overall tests.
 #'   If `plot_posthoc_tests = TRUE`, it will return a plot with multiple lines, one per pair in post hoc tests
-#'   (only for multinominal data, with more than two states).
+#'   (only for multinomial data, with more than two states).
 #'
 #'   If a PDF file path is provided in `PDF_file_path`, the plot will be saved directly in a PDF file.
 #'
 #' @param deepSTRAPP_outputs List of elements generated with [deepSTRAPP::run_deepSTRAPP_over_time()],
-#'   that summarize the results of multiple deepSTRAPP across `$time_steps`.
-#' @param time_range Vector of two numerical values. Time boundaries used for X-axis the plot.
+#'   that summarize the results of multiple deepSTRAPP runs across `$time_steps`.
+#' @param time_range Numeric vector of length 2. Time boundaries used for the X-axis of the plot.
 #'   If `NULL` (the default), the range of data provided in `deepSTRAPP_outputs` will be used.
-#' @param pvalues_max Numerical. Set the max boundary used for the Y-axis of the plot.
+#' @param pvalues_max Numeric. Set the max boundary used for the Y-axis of the plot.
 #'   If `NULL` (the default), the maximum p-value provided in `deepSTRAPP_outputs` will be used.
-#' @param alpha Numerical. Significance level to display as a red dashed line on the plot. If set to `NULL`, no line will be added. Default is `0.05`.
+#' @param alpha Numeric. Significance level to display as a red dashed line on the plot. If set to `NULL`, no line will be added. Default is `0.05`.
 #' @param display_plot Logical. Whether to display the plot generated in the R console. Default is `TRUE`.
 #' @param plot_significant_time_frame Logical. Whether to display a green band over the time frame that yields significant results according to the chosen alpha level. Default is `TRUE`.
-#' @param plot_posthoc_tests Logical. For multinominal data only. Whether to plot the p-values for the overall Kruskal-Wallis test across all states (`plot_posthoc_tests = FALSE`),
+#' @param plot_posthoc_tests Logical. For multinomial data only. Whether to plot the p-values for the overall Kruskal-Wallis test across all states (`plot_posthoc_tests = FALSE`),
 #'   or plot the p-values for the pairwise post hoc Dunn's test across pairs of states (`plot_posthoc_tests = TRUE`). Default is `FALSE`.
 #'   This is only possible if `deepSTRAPP_outputs` contains the `$pvalues_summary_df_for_posthoc_pairwise_tests` element returned by
 #'   [deepSTRAPP::run_deepSTRAPP_over_time()] when `posthoc_pairwise_tests = TRUE`.
-#' @param select_posthoc_pairs Vector of character strings used to specify the pairs to include in the plot. Names of pairs must match the pairs found in
+#' @param select_posthoc_pairs Character vector used to specify the pairs to include in the plot. Names of pairs must match the pairs found in
 #'   `deepSTRAPP_outputs$pvalues_summary_df_for_posthoc_pairwise_tests$pair`. Default is "all" to include all pairs.
 #' @param plot_adjusted_pvalues Logical. Whether to display the p-values adjusted for multiple testing rather than the raw p-values.
 #'   See argument 'p.adjust_method' in [deepSTRAPP::run_deepSTRAPP_for_focal_time()] or [deepSTRAPP::run_deepSTRAPP_over_time()]. Default is `FALSE`.
@@ -35,11 +35,11 @@
 #' @importFrom cowplot save_plot
 #' @importFrom stats complete.cases
 #'
-#' @details Plots are build based on the p-values recorded in summary_df provided by [deepSTRAPP::run_deepSTRAPP_over_time()].
+#' @details Plots are built based on the p-values recorded in summary_df provided by [deepSTRAPP::run_deepSTRAPP_over_time()].
 #'
 #'   For overall tests, those p-values are found in `$pvalues_summary_df`.
 #'
-#'   For multinominal data (categorical or biogeographic data with more than 2 states), it is possible to plot p-values of post hoc pairwise tests.
+#'   For multinomial data (categorical or biogeographic data with more than 2 states), it is possible to plot p-values of post hoc pairwise tests.
 #'   Set `plot_posthoc_tests = TRUE` to generate plots for the pairwise post hoc Dunn's test across pairs of states.
 #'   To achieve this, the `deepSTRAPP_outputs` input object must contain a `$pvalues_summary_df_for_posthoc_pairwise_tests` element that summarizes p-values
 #'   computed across pairs of states for all post hoc tests. This is obtained from [deepSTRAPP::run_deepSTRAPP_over_time()] when setting
@@ -48,7 +48,7 @@
 #' @return The function returns a list of classes `gg` and `ggplot`.
 #'   This object is a ggplot that can be displayed on the console with `print(output)`.
 #'   It corresponds to the plot being displayed on the console when the function is run, if `display_plot = TRUE`,
-#'   and can be further modify for aesthetics using the ggplot2 grammar.
+#'   and can be further modified for aesthetics using the ggplot2 grammar.
 #'
 #'   If a `PDF_file_path` is provided, the function will also generate a PDF file of the plot.
 #'
@@ -60,7 +60,8 @@
 #' if (deepSTRAPP::is_dev_version())
 #' {
 #'   ## Load results of run_deepSTRAPP_over_time() for categorical data with 3-levels
-#'   data(Ponerinae_deepSTRAPP_cat_3lvl_old_calib_0_40, package = "deepSTRAPP")
+#'   Ponerinae_deepSTRAPP_cat_3lvl_old_calib_0_40 <- readRDS(system.file("extdata",
+#'      "Ponerinae_deepSTRAPP_cat_3lvl_old_calib_0_40.rds", package = "deepSTRAPP"))
 #'   ## This dataset is only available in development versions installed from GitHub.
 #'   # It is not available in CRAN versions.
 #'   # Use remotes::install_github(repo = "MaelDore/deepSTRAPP") to get the latest development version.
@@ -130,12 +131,12 @@ plot_STRAPP_pvalues_over_time <-  function (
       # Check that two values are provided for time_range
       if (length(time_range) != 2)
       {
-        stop(paste0("'time_range' must be a vector of two positive numerical values providing the time boundaries of the X-axis used for the plot."))
+        stop(paste0("'time_range' must be a vector of two positive numeric values providing the time boundaries of the X-axis used for the plot."))
       }
       # Check that time_range is strictly positive
       if (!identical(time_range, abs(time_range)))
       {
-        stop(paste0("'time_range' must be strictly positive numerical values providing the time boundaries of the X-axis used for the plot."))
+        stop(paste0("'time_range' must be strictly positive numeric values providing the time boundaries of the X-axis used for the plot."))
       }
       # Ensure that time_range are properly ordered in increasing values
       time_range <- range(time_range)
@@ -160,7 +161,7 @@ plot_STRAPP_pvalues_over_time <-  function (
       # Check that pvalues_max is comprised within [0,1]
       if ((pvalues_max < 0) | (pvalues_max > 1))
       {
-        stop(paste0("'pvalues_max' must be strictly a positive numerical value between 0 and 1 providing the maximum boundary of the Y-axis used for the plot."))
+        stop(paste0("'pvalues_max' must be strictly a positive numeric value between 0 and 1 providing the maximum boundary of the Y-axis used for the plot."))
       }
     }
 
@@ -186,8 +187,8 @@ plot_STRAPP_pvalues_over_time <-  function (
     {
       # Extract $trait_data_type_for_stats from deepSTRAPP_outputs$STRAPP_results_over_time
       trait_data_type_for_stats <- deepSTRAPP_outputs$trait_data_type_for_stats
-      # plot_posthoc_tests = TRUE only for "multinominal" data
-      if (trait_data_type_for_stats != "multinominal")
+      # plot_posthoc_tests = TRUE only for "multinomial" data
+      if (trait_data_type_for_stats != "multinomial")
       {
         stop(paste0("'posthoc_pairwise_tests = TRUE' only makes sense for categorical/biogeographic data with more than two states/ranges.\n",
                     "Set 'posthoc_pairwise_tests = FALSE', or provide 'deepSTRAPP_outputs' for a trait with more than two states/ranges'.\n",
@@ -248,9 +249,37 @@ plot_STRAPP_pvalues_over_time <-  function (
     }
   }
 
-  ## Save initial par() and reassign them on exit
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar))
+  ## Save the graphical parameters on entry and, on exit, restore only those this function actually changed.
+
+  # List graphical parameters describing the plot that now exists (Never to restore as they describe the current plot state)
+  plot_state_par_names <- c("usr", "plt", "fig", "mfg", "new", "xaxp", "yaxp", "pin")
+  # Save current graphic parameters
+  entry_par <- par(no.readonly = TRUE)
+
+  # On exit, compare changes in par and restore the ones that have change, but the plot_state_par
+  on.exit({
+    # List par on exit
+    exit_par <- par(no.readonly = TRUE)
+    # Identify differences with initial parameters
+    changed_par_names <- names(entry_par)[!vapply(X = names(entry_par),
+                                                  FUN = function (x) { isTRUE(all.equal(entry_par[[x]], exit_par[[x]])) },
+                                                  FUN.VALUE = logical(1))]
+    # Exclude plot state parameters from the restore
+    changed_par_names <- setdiff(changed_par_names, plot_state_par_names)
+    # Restore parameters if any has changed
+    if (length(changed_par_names) > 0)
+    {
+      par(entry_par[changed_par_names])
+    }
+
+    # Force new to FALSE, so the next plot calling plot.new() start on a new clean window,
+    # But only if we actually plot something
+    if (isTRUE(display_plot) || (isTRUE(exit_par$new) && !isTRUE(entry_par$new)))
+    {
+      par(new = FALSE)
+    }
+  }, add = TRUE)
+
 
   ## Remove "_" from $rate_type
   rate_type <- gsub(pattern = "_", replacement = " ", x = deepSTRAPP_outputs$rate_type)

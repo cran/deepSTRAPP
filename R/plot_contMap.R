@@ -9,10 +9,11 @@
 #'   * Step 2: Use [phytools::plot.contMap()] to plot the mapped phylogeny.
 #'
 #' @param contMap List of class `"contMap"`, typically generated with [deepSTRAPP::prepare_trait_data()],
-#'   that contains a phylogenetic tree and associated posterior probability of being in a given state/range along branches.
-#'   Each object (i.e., `densityMap`) corresponds to a state/range. If no color is provided for multi-area ranges, they will be interpolated.
-#' @param color_scale Vector of character string. List of colors to use to build the color scale with [grDevices::colorRampPalette()]
+#'   that contains a phylogenetic tree and associated ancestral trait estimates mapped along branches in `contMap$tree$maps`.
+#' @param color_scale Character vector. List of colors to use to build the color scale with [grDevices::colorRampPalette()]
 #'   showing the evolution of a continuous trait. From lowest values to highest values.
+#'   Default (`color_scale = NULL`) is using the color palette recorded in the `contMap$cols` item. If none was provided, the `rainbow()` palette is used.
+#'   Provide the full argument name to avoid ambiguity with the `col` graphical argument.
 #' @param ... Additional arguments to pass down to [phytools::plot.contMap()] to control plotting.
 #' @param display_plot Logical. Whether to display the plot generated in the R console. Default is `TRUE`.
 #' @param PDF_file_path Character string. If provided, the plot will be saved in a PDF file following the path provided here. The path must end with ".pdf".
@@ -68,8 +69,8 @@
 #'
 
 plot_contMap <- function (contMap,
-                          color_scale = NULL,
                           ..., # To pass down to BAMMtools::plot.bammdata(), BAMMtools::addBAMMshifts(), and par()
+                          color_scale = NULL, # Placed after ... so any 'col' argument provided is not captured by 'color_scale'
                           display_plot = TRUE,
                           PDF_file_path = NULL)
 {
@@ -98,9 +99,37 @@ plot_contMap <- function (contMap,
     }
   }
 
-  ## Save initial par() and reassign them on exit
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar))
+  ## Save the graphical parameters on entry and, on exit, restore only those this function actually changed.
+
+  # List graphical parameters describing the plot that now exists (Never to restore as they describe the current plot state)
+  plot_state_par_names <- c("usr", "plt", "fig", "mfg", "new", "xaxp", "yaxp", "pin")
+  # Save current graphic parameters
+  entry_par <- par(no.readonly = TRUE)
+
+  # On exit, compare changes in par and restore the ones that have change, but the plot_state_par
+  on.exit({
+    # List par on exit
+    exit_par <- par(no.readonly = TRUE)
+    # Identify differences with initial parameters
+    changed_par_names <- names(entry_par)[!vapply(X = names(entry_par),
+                                                  FUN = function (x) { isTRUE(all.equal(entry_par[[x]], exit_par[[x]])) },
+                                                  FUN.VALUE = logical(1))]
+    # Exclude plot state parameters from the restore
+    changed_par_names <- setdiff(changed_par_names, plot_state_par_names)
+    # Restore parameters if any has changed
+    if (length(changed_par_names) > 0)
+    {
+      par(entry_par[changed_par_names])
+    }
+
+    # Force new to FALSE, so the next plot calling plot.new() start on a new clean window,
+    # But only if we actually plot something
+    if (isTRUE(display_plot) || (isTRUE(exit_par$new) && !isTRUE(entry_par$new)))
+    {
+      par(new = FALSE)
+    }
+  }, add = TRUE)
+
 
   ## Update color scale if requested
   if (!is.null(color_scale))
@@ -133,7 +162,7 @@ plot_contMap <- function (contMap,
                    width = width, height = height)
 
     ## Plot the contMap
-    phytools::plot.contMap(x = contMap,
+    phytools::plot.contMap(x = updated_contMap,
                            plot = TRUE,
                            ...)
     # Close PDF

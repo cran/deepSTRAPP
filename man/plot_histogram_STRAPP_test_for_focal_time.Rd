@@ -18,13 +18,13 @@ that summarize the results of a STRAPP test for a specific time in the past (i.e
 \code{deepSTRAPP_outputs} can also be extracted from the output of \code{\link[=run_deepSTRAPP_over_time]{run_deepSTRAPP_over_time()}} that
 run the whole deepSTRAPP workflow and store results inside \verb{$STRAPP_results_over_time}.}
 
-\item{focal_time}{Numerical. (Optional) If \code{deepSTRAPP_outputs} comprises results over multiple time-steps
+\item{focal_time}{Numeric. (Optional) If \code{deepSTRAPP_outputs} comprises results over multiple time-steps
 (i.e., output of \code{\link[=run_deepSTRAPP_over_time]{run_deepSTRAPP_over_time()}}, this is the time of the STRAPP test targeted for plotting.}
 
 \item{display_plot}{Logical. Whether to display the histogram(s) generated in the R console. Default is \code{TRUE}.}
 
-\item{plot_posthoc_tests}{Logical. For multinominal data only. Whether to plot the histogram for the overall Kruskal-Wallis test across all states (\code{plot_posthoc_tests = FALSE}),
-or plot the histograms for all the pairwise post hoc Dunn's test across pairs of states (\code{plot_posthoc_tests = TRUE}). Default is \code{FALSE}.}
+\item{plot_posthoc_tests}{Logical. For multinomial data only. Whether to plot the histogram for the overall Kruskal-Wallis test across all states (\code{plot_posthoc_tests = FALSE}),
+or plot the histograms for all the pairwise post hoc Dunn's tests across pairs of states (\code{plot_posthoc_tests = TRUE}). Default is \code{FALSE}.}
 
 \item{PDF_file_path}{Character string. If provided, the plot will be saved in a PDF file following the path provided here. The path must end with ".pdf".}
 }
@@ -34,29 +34,30 @@ This object is a ggplot that can be displayed on the console with \code{print(ou
 It corresponds to the histogram being displayed on the console when the function is run, if \code{display_plot = TRUE}, and can be further
 modify for aesthetics using the ggplot2 grammar.
 
-If using multinominal data and set \code{plot_posthoc_tests = TRUE}, the function will return a list of objects.
+If using multinomial data and setting \code{plot_posthoc_tests = TRUE}, the function will return a list of objects.
 Each object is the ggplot associated with a pairwise post hoc test.
 To plot each histogram \code{i} individually, use \code{print(output_list[[i]])}.
 To plot all histograms at once in a multifaceted plot, as displayed on the console if \code{display_plot = TRUE}, use \code{cowplot::plot_grid(plotlist = output_list)}.
 
 Each plot also displays summary statistics for the STRAPP test associated with the data displayed.
 \itemize{
-\item The quantile of null statistic distribution at the significant threshold used to define test significance. This is the value found on the red dashed line.
+\item QX\% = The quantile of null statistic distribution at the significance threshold used to define test significance. This is the value found on the red dashed line.
 The test will be considered significant (i.e., the null hypothesis is rejected) if this value is higher than zero (the black dashed line).
-\item The p-value of the STRAPP test which correspond the proportion of cases in which the statistics was lower than expected under the null hypothesis
+\item P-value =  The p-value of the STRAPP test which corresponds to the proportion of cases in which the statistic was lower than expected under the null hypothesis
 (i.e., the proportion of the histogram found below / on the left-side of the black dashed line).
+\item N = The number of test statistics in the null distribution.
 }
 
 If a \code{PDF_file_path} is provided, the function will also generate a PDF file of the plot. For post hoc tests, this will save the multifaceted plot.
 }
 \description{
-Plot an histogram of the distribution of the test statistics
+Plot a histogram of the distribution of the test statistics
 obtained from a STRAPP test carried out for a unique \code{focal_time}.
 (See \code{\link[=compute_STRAPP_test_for_focal_time]{compute_STRAPP_test_for_focal_time()}} and
 \code{\link[=run_deepSTRAPP_for_focal_time]{run_deepSTRAPP_for_focal_time()}}).
 
 Returns a single histogram for overall tests.
-If \code{plot_posthoc_tests = TRUE}, it will return a faceted plot with an histogram per post hoc tests.
+If \code{plot_posthoc_tests = TRUE}, it will return a faceted plot with a histogram per post hoc test.
 
 If a PDF file path is provided in \code{PDF_file_path}, the plot will be saved directly in a PDF file.
 }
@@ -69,8 +70,8 @@ Such distributions are recorded in the outputs of a deepSTRAPP run carried out w
 when \code{return_perm_data = TRUE} so that the distributions of test stats computed across posterior samples are returned
 among the outputs under \verb{$STRAPP_results$perm_data_df}.
 
-For multinominal data (categorical or biogeographic data with more than 2 states), it is possible to plot the histograms of post hoc pairwise tests.
-Set \code{plot_posthoc_tests = TRUE} to generate histograms for all the pairwise post hoc Dunn's test across pairs of states.
+For multinomial data (categorical or biogeographic data with more than 2 states), it is possible to plot the histograms of post hoc pairwise tests.
+Set \code{plot_posthoc_tests = TRUE} to generate histograms for all the pairwise post hoc Dunn's tests across pairs of states.
 To achieve this, the \code{deepSTRAPP_outputs} input object must contain a \verb{$STRAPP_results$posthoc_pairwise_tests$perm_data_array} element
 that summarizes test statistics computed across posterior samples for all pairwise post hoc tests.
 This is obtained from \code{\link[=run_deepSTRAPP_for_focal_time]{run_deepSTRAPP_for_focal_time()}} when setting both \code{posthoc_pairwise_tests = TRUE} to carry out post hoc tests,
@@ -82,7 +83,7 @@ unique time-step used for plotting.
 \itemize{
 \item \code{return_perm_data} must be set to \code{TRUE} so that the permutation data used to compute the tests are returned among the outputs
 under \verb{$STRAPP_results_over_time[[i]]$perm_data_df}.
-\item \code{posthoc_pairwise_tests} must be set to \code{TRUE} so that the permutation data used to performed the post hoc tests are also
+\item \code{posthoc_pairwise_tests} must be set to \code{TRUE} so that the permutation data used to perform the post hoc tests are also
 returned among the outputs under \verb{$STRAPP_results_over_time[[i]]$posthoc_pairwise_tests$perm_data_array}.
 }
 
@@ -120,7 +121,8 @@ if (deepSTRAPP::is_dev_version())
  \donttest{ # (May take several minutes to run)
  # Run a Stochastic Mapping based on a Brownian Motion model
  # to interpolate values along branches and obtain a "contMap" object
- Ponerinae_contMap <- phytools::contMap(Ponerinae_tree, x = Ponerinae_cont_tip_data,
+ Ponerinae_contMap <- phytools::contMap(tree = Ponerinae_tree_old_calib,
+                                        x = Ponerinae_cont_tip_data,
                                         res = 100, # Number of time steps
                                         plot = FALSE)
  # Plot contMap = stochastic mapping of continuous trait
@@ -140,10 +142,8 @@ if (deepSTRAPP::is_dev_version())
    BAMM_object = Ponerinae_BAMM_object_old_calib,
    focal_time = focal_time,
    rate_type = "net_diversification",
-   return_perm_data = TRUE,
-   extract_diversification_data_melted_df = TRUE,
-   return_updated_trait_data_with_Map = TRUE,
-   return_updated_BAMM_object = TRUE)
+   uncertainty_strategy = "rates_only",
+   return_perm_data = TRUE)
 
  ## Explore output
  str(Ponerinae_deepSTRAPP_cont_old_calib_10My, max.level = 1)
@@ -163,7 +163,8 @@ if (deepSTRAPP::is_dev_version())
  # ----- Plot histogram of STRAPP overall test results from run_deepSTRAPP_over_time() ----- #
 
  ## Load directly outputs from run_deepSTRAPP_over_time()
- data(Ponerinae_deepSTRAPP_cont_old_calib_0_40, package = "deepSTRAPP")
+ Ponerinae_deepSTRAPP_cont_old_calib_0_40 <- readRDS(system.file("extdata",
+    "Ponerinae_deepSTRAPP_cont_old_calib_0_40.rds", package = "deepSTRAPP"))
  ## This dataset is only available in development versions installed from GitHub.
  # It is not available in CRAN versions.
  # Use remotes::install_github(repo = "MaelDore/deepSTRAPP") to get the latest development version.
@@ -188,7 +189,7 @@ if (deepSTRAPP::is_dev_version())
  ## Load data
 
  # Load phylogeny
- data(Ponerinae_tree, package = "deepSTRAPP")
+ data(Ponerinae_tree_old_calib, package = "deepSTRAPP")
  # Load trait df
  data(Ponerinae_trait_tip_data, package = "deepSTRAPP")
 
@@ -234,16 +235,17 @@ if (deepSTRAPP::is_dev_version())
 
  Ponerinae_deepSTRAPP_cat_3lvl_old_calib_10My <- run_deepSTRAPP_for_focal_time(
     densityMaps = Ponerinae_cat_3lvl_data_old_calib$densityMaps,
+    nb_simulations = 100,
     ace = Ponerinae_cat_3lvl_data_old_calib$ace,
     tip_data = Ponerinae_cat_3lvl_tip_data,
     trait_data_type = "categorical",
     BAMM_object = Ponerinae_BAMM_object_old_calib,
     focal_time = focal_time,
     rate_type = "net_diversification",
+    uncertainty_strategy = "paired",
     posthoc_pairwise_tests = TRUE,
     return_perm_data = TRUE,
-    extract_diversification_data_melted_df = TRUE,
-    return_updated_trait_data_with_Map = TRUE,
+    return_updated_Maps = TRUE,
     return_updated_BAMM_object = TRUE)
 
  ## Explore output

@@ -4,6 +4,7 @@
 # deepSTRAPP <img src="man/figures/logo.png" align="right" alt="deepSTRAPP logo" width="200" />
 
 <!-- badges: start -->
+
 <!-- 
 usethis::use_cran_badge() reports the current version of your package on CRAN.
 usethis::use_coverage() reports test coverage.
@@ -16,63 +17,91 @@ use_github_actions()  reports the R CMD check status of your development package
 [![Downloads - Per month](https://cranlogs.r-pkg.org/badges/deepSTRAPP)](https://r-pkg.org:443/pkg/deepSTRAPP) # Per month
 [![DOI](https://zenodo.org/badge/TBA.svg)](https://zenodo.org/doi/TBA)
 &#10;-->
+
 <!-- badges: end -->
 
 The **R package deepSTRAPP** employs time-calibrated phylogenies and
 trait data to **test for differences in diversification rates between
-traits over evolutionary time**. It works with continuous, categorical,
-and biogeographic trait data and extends the STRAPP test from
-`[BAMMtools::traitDependentBAMM()]` to any time step along phylogenies.
+traits over evolutionary time**. It handles continuous, categorical, and
+biogeographic trait data and extends the STRAPP test of
+`BAMMtools::traitDependentBAMM()` from the present day to any time step
+along a phylogeny.
 
 ## :dart: Summary
 
-<br> **deepSTRAPP** provides a powerful analytic framework to
-investigate the **Diversification Rate Hypothesis (DRH)** in the context
-of Historical Biogeography. DRH posits that current heterogeneity in
-diversity patterns such as the Latitudinal Diversity Gradient are mostly
-due to differences in diversification rates across bioregions. This
-hypothesis is typically assessed by comparing diversification rates
-across tips between the different bioregions with for example a STRAPP
-test (*Rabosky & Huang, 2016*). However, such tests only compare current
-rates of diversification that may not be informative about the
-**long-term past dynamics shaping present-day biodiversity**. deepSTRAPP
-overcomes this methodological gap: it enables to test the DRH by
-comparing diversification rates **at any time step along evolutionary
-time**. As a typical outcome, it allows researchers to **identify
-time-frame of significance** during which diversification rates were
-different across trait values, providing a quantitative testing
-framework to **disentangle effects of past and current dynamics** in
-explaining current patterns of biodiversity.
+<br> **deepSTRAPP** models independently the evolutionary history of
+continuous, categorical, or biogeographic trait data and the
+diversification dynamics of a clade, then tests for a relationship
+between ancestral trait values / states / ranges and diversification
+rates at any point in time. This flexibility allows users to **identify
+the specific time-frames of significance** during which diversification
+dynamics diverged across traits or geographic regions, thereby
+disentangling the relative contributions of past versus recent processes
+in shaping present biodiversity patterns. <br><br>
 
-Beyond the biogeographic context, deepSTRAPP can be used to test for an
-evolutionary relationship between phenotypic evolution and
-diversification dynamics for **any type of traits**. It provides an
-alternative approach to state-dependent speciation and extinction (SSE)
-models that intend to model altogether trait evolution and
-diversification dynamics, but are often time-consuming and hard to
-parametrize, especially on large time-calibrated phylogenies. Thus,
-deepSTRAPP offers a flexible solution that **can be applied to
-phylogenies encompassing thousands of lineages** (*Doré al., 2025*).
+### The statistical framework
 
-deepSTRAPP is especially suited for large phylogenies as the power of
-the statistical tests is limited by the number of diversification regime
-shifts detected on the phylogeny and used to perform permutation tests.
-Each macroevolutionary regime acts as an independent event used to test
-for differences, therefore the sample size of the tests is conditioned
-by the number of macroevolutionary regimes identified. It is unlikely to
-detect any significant differences with few regime shifts.
+**deepSTRAPP** statistical framework is an extension of the STructured
+RAte Permutations on Phylogenies (STRAPP) test. STRAPP tests are based
+on **block-permutations**: rates data are randomized across tips within
+blocks defined by the diversification regimes identified on each tip
+(typically inferred with BAMM). Permuting within regimes rather than
+across the whole tree provide the correct error structure to **account
+for the phylogenetic pseudoreplication of rates** occurring between tips
+sharing the same macroevolutionary regime. It requires multiple
+independent associations between character states and diversification to
+yield a significant macroevolutionary signal (*Rabosky & Huang, 2016*).
+<br><br>
+
+### Applications
+
+In the context of **historical biogeography**, deepSTRAPP provides a
+powerful analytic framework to investigate the **Diversification Rate
+Hypothesis (DRH)**. The DRH posits that the current heterogeneity in
+diversity patterns, such as the Latitudinal Diversity Gradient, is
+mainly due to differences in diversification rates between bioregions.
+This hypothesis is typically assessed by comparing diversification rates
+across present-day tips between bioregions, for example with a STRAPP
+test. However, such tests only compare current rates of diversification
+that may not be informative about the **long-term past dynamics shaping
+present-day biodiversity**. deepSTRAPP overcomes this methodological
+gap: it enables users to test the DRH by comparing diversification rates
+**at any time step along evolutionary time**, providing a quantitative
+testing framework to **disentangle effects of past and current
+dynamics** in explaining current patterns of biodiversity.
+
+Beyond the biogeographic context, deepSTRAPP can test for an
+**evolutionary relationship between phenotypic evolution and
+diversification dynamics**, enabling the detection of the **timing of
+adaptive radiations** linking changes in trait states and bursts in
+diversification. It provides an alternative approach to state-dependent
+speciation and extinction (SSE) models that jointly model trait
+evolution and diversification dynamics but are not designed to **test
+for differences at a given point in time**.
+
+**deepSTRAPP** is especially suited for **large phylogenies** as the
+power of the statistical tests is limited by the number of
+diversification regime shifts detected on the phylogeny and used to
+perform permutation tests (e.g., *Doré et al., 2025*). Each
+macroevolutionary regime acts as an independent event used to test for
+differences, therefore the sample size of the tests is conditioned by
+the number of macroevolutionary regimes identified. Larger phylogenies
+tend to carry more regime shifts, thus hold more information susceptible
+to yield a significant test result. <br><br>
+
+### Workflow
 
 A **full deepSTRAPP workflow** runs as follows:
 
-- **Step 1**: Map trait evolution
+- **Step 1:** Map trait evolution
 - **Step 2:** Infer diversification dynamics (typically with BAMM)
 - **Step 3:** Run deepSTRAPP
-- **Step 3.1:** Extract traits values, diversification rates, and
-  regimes at a given time in the past
-- **Step 3.2:** Run a STRAPP test
-- **Step 3.3:** Repeat steps 3.1 & 3.2 for many time steps along
-  evolution time
-- **Step 4:** Summarize tests results
+  - **Step 3.1:** Extract trait values, diversification rates, and
+    regimes at a given time in the past
+  - **Step 3.2:** Run a STRAPP test
+  - **Step 3.3:** Repeat steps 3.1 & 3.2 for many time steps along
+    evolutionary time
+- **Step 4:** Summarize test results <br><br>
 
 ![Simplified deepSTRAPP workflow](man/figures/deepSTRAPP_workflow.png)
 **Figure 1: Simplified deepSTRAPP workflow showing the main functions
@@ -84,20 +113,22 @@ green. Final outputs in pink.
 
 > STRAPP test: Rabosky, D. L., & Huang, H. (2016). A robust
 > semi-parametric test for detecting trait-dependent diversification.
-> Systematic biology, 65(2), 181-193.
+> *Systematic Biology*, 65(2), 181-193.
 > <https://doi.org/10.1093/sysbio/syv066>.
 
 > deepSTRAPP application: Doré, M., Borowiec, M. L., Branstetter, M. G.,
-> Camacho, G. P., Fisher, B. L., Longino, J. T., Ward, P. S., Blaimer,
+> Camacho, G. P., Fisher, B. L., Longino, J. T., Ward, P. S., & Blaimer,
 > B. B. (2025). Evolutionary history of ponerine ants highlights how the
-> timing of dispersal events shapes modern biodiversity. Nature
-> Communications, 16, 8297. <https://doi.org/10.1038/s41467-025-63709-3>
-> <br>
+> timing of dispersal events shapes modern biodiversity. *Nature
+> Communications*, 16, 8297.
+> <https://doi.org/10.1038/s41467-025-63709-3>
+
+<br>
 
 ## :envelope_with_arrow: Installation
 
-deepSTRAPP works on R version 4.4 or more. Be sure to have an R version
-that is compatible. <br> See <https://CRAN.R-project.org/>.
+<br> deepSTRAPP works on R version 4.4 or more. Be sure to have an R
+version that is compatible. <br> See <https://CRAN.R-project.org/>.
 
 From **CRAN**, for the latest release:
 
@@ -110,21 +141,43 @@ From **GitHub**, for the current development version, including all
 
 ``` r
 library(devtools)
+
+# If you want to have access to the vignettes/tutorials locally, run:
 remotes::install_github(repo = "MaelDore/deepSTRAPP")
+
+# Altough, this is time-consuming, you can also opt for this light installation:
+remotes::install_github(repo = "MaelDore/deepSTRAPP", build_vignettes = FALSE)
+# You will not have access to the vignettes/tutorials within R, but can still acess them through this website.
+# See the dedicated Sections below.
 ```
 
 You may need additional tools for package compilation such as Rtools
 (Windows) and Xcode (Mac OS). <br> See [this
 page](https://support.posit.co/hc/en-us/articles/200486498-Package-Development-Prerequisites)
-for details. <br>
+for details. <br><br>
 
 ## :link: Dependencies
 
-deepSTRAPP relies on other software and R packages to perform some of
-its core tasks. R package dependencies will automatically be downloaded
-and installed alongside deepSTRAPP. However, R packages that are not
-currently available on CRAN, and external software may need to be
-installed independently.
+<br> deepSTRAPP relies on other software and R packages to perform some
+of its core tasks. R package dependencies will automatically be
+downloaded and installed alongside deepSTRAPP. However, R packages that
+are not currently available on CRAN, and external software may need to
+be installed independently.
+
+- The C++ software **BAMM** is used to model diversification dynamics on
+  time-calibrated phylogenies. It is needed by deepSTRAPP to obtain
+  estimates of diversification rates along branches. You can install the
+  latest version of BAMM from its [official
+  website](http://bamm-project.org/). You will later need to provide to
+  deepSTRAPP the path to your BAMM installation folder as an argument to
+  the dedicated function \[prepare_diversification_data()\], so it can
+  call BAMM within R to perform its tasks.
+
+**Reference:**
+
+> Rabosky, DL. Automatic detection of key innovations, rate shifts, and
+> diversity-dependence on phylogenetic trees. *PLoS One* 9, e89543
+> (2014). DOI: <https://doi.org/10.1371/journal.pone.0089543> <br>
 
 - The R package **BioGeoBEARS** is used to infer ancestral ranges on
   time-calibrated phylogenies. It is needed by deepSTRAPP to perform the
@@ -147,45 +200,63 @@ Wiki](http://phylo.wikidot.com/biogeobears).
 > published on GitHub on November 6, 2018. DOI:
 > <http://dx.doi.org/10.5281/zenodo.1478250>
 
-- The C++ software **BAMM** is used to model diversification dynamics on
-  time-calibrated phylogenies. It is needed by deepSTRAPP to obtain
-  estimates of diversification rates along branches. You can install the
-  latest version of BAMM from its [official
-  website](http://bamm-project.org/). You will later need to provide to
-  deepSTRAPP the path to your BAMM installation folder as an argument to
-  the dedicated function \[prepare_diversification_data()\], so it can
-  call BAMM within R to perform its tasks.
+- The R package **contsimmap** is used to produce stochastic character
+  maps of continuous trait data on phylogenies (i.e., continuous
+  stochastic maps). It is needed by deepSTRAPP to propagate the
+  uncertainty in ancestral trait inferences within tests based on
+  continuous traits. You can install the latest version of contsimmap
+  from its [author’s repository on
+  GitHub](https://github.com/bstaggmartin/contsimmap):
+
+``` r
+library(devtools)
+devtools::install_github(repo="bstaggmartin/contsimmap")
+```
 
 **Reference:**
 
-> Rabosky, DL. Automatic detection of key innovations, rate shifts, and
-> diversity-dependence on phylogenetic trees. PLoS One 9, e89543 (2014).
-> DOI: <https://doi.org/10.1371/journal.pone.0089543> <br>
+> Martin, B. S., & Weber, M. G. (2026). Stochastic character mapping of
+> continuous traits on phylogenies. *Systematic Biology*, syag031. DOI:
+> <http://doi.org/10.1093/sysbio/syag031>
+
+- Archived copies of the non-CRAN R package dependencies are also
+  provided through an alternative repository to ensure long-term
+  compatibility and reproducibility, even if the development versions of
+  these packages change over time.
+
+``` r
+install.packages("drat")
+drat::addRepo("maeldore", "https://maeldore.github.io/drat")
+install.packages(c("BioGeoBEARS", "contsimmap"))
+```
+
+<br>
 
 ## :desktop_computer: Website
 
-A companion website is available to browse interactively the different
-tutorials and functions of **deepSTRAPP** at this URL:
+<br> A companion website is available to browse interactively the
+different tutorials and functions of **deepSTRAPP** at this URL:
 <https://maeldore.github.io/deepSTRAPP/>.
 
 An overview of all functions and datasets is available
-[here](https://maeldore.github.io/deepSTRAPP/reference/index.html). <br>
+[here](https://maeldore.github.io/deepSTRAPP/reference/index.html).
+<br><br>
 
 ## :joystick: Quick-to-run example
 
-A **simple use-case** that shows how deepSTRAPP can be used to **test
-for differences in diversification rates between two trait states along
-evolutionary times** is available
+<br> A **simple use-case** that shows how deepSTRAPP can be used to
+**test for differences in diversification rates between two trait states
+along evolutionary times** is available
 [here](https://maeldore.github.io/deepSTRAPP/articles/main_tutorial.html)
 and within R: `vignette("main_tutorial")`.
 
 This tutorial presents the main functions in a typical **deepSTRAPP
-workflow**. <br> For more advanced used, please refer to the
-vignettes/tutorials below. <br>
+workflow**. <br> For more advanced uses, please refer to the
+vignettes/tutorials below. <br><br>
 
 ## :scroll: Advanced uses / tutorials
 
-Tutorials are available to explore more **advanced usages** of
+<br> Tutorials are available to explore more **advanced usages** of
 deepSTRAPP. They provide explanations on available arguments and
 interpretations of results of deepSTRAPP across multiple types of data.
 They are listed below, in the [companion
@@ -224,7 +295,7 @@ and in this vignette: `vignette("deepSTRAPP")`.
 
 **4/ Explore the STRAPP test options**
 
-- [Test difference
+- [Test different
   hypotheses](https://maeldore.github.io/deepSTRAPP/articles/explore_STRAPP_test_types.html):
   `vignette("explore_STRAPP_test_types")`.
 
@@ -240,7 +311,34 @@ and in this vignette: `vignette("deepSTRAPP")`.
   data](https://maeldore.github.io/deepSTRAPP/articles/plot_rates_through_time.html):
   `vignette("plot_rates_through_time")`.
 
-**6/ Cut phylogenies**
+**6/ Handle uncertainty**
+
+- [Handle **uncertainty** in trait and rate
+  estimates](https://maeldore.github.io/deepSTRAPP/articles/handle_uncertainty.html):
+  `vignette("handle_uncertainty")`.
+
+  Explore the three strategies available:
+
+  - **‘rates_only’**: Only accounts for diversification-rate uncertainty
+    across BAMM posterior samples.
+  - **‘paired’**: Accounts for both diversification-rate and ancestral
+    trait/range reconstruction uncertainty by pairing BAMM posterior
+    samples with stochastic maps.
+  - **‘full’**: Accounts for both diversification-rate and ancestral
+    reconstruction uncertainty by evaluating every combination of BAMM
+    posterior samples and stochastic maps.
+
+**7/ Import external analyses**
+
+- [Import **external
+  analyses**](https://maeldore.github.io/deepSTRAPP/articles/import_external_analyses.html):
+  `vignette("import_external_analyses")`.
+
+  Import and format results of external analyses of trait-evolution
+  histories and diversification dynamics, and make them ready-to-use as
+  inputs for a deepSTRAPP run.
+
+**8/ Cut phylogenies**
 
 - [Cut different types of **(mapped) phylogenies** for a given
   focal-time](https://maeldore.github.io/deepSTRAPP/articles/cut_phylogenies.html):
@@ -249,6 +347,7 @@ and in this vignette: `vignette("deepSTRAPP")`.
   - time-calibrated phylogenies.
   - contMap for continuous traits.
   - densityMap for categorical and biogeographic traits.
+  - simmaps for categorical and biogeographic traits.
   - BAMM_object for diversification dynamics.
 
 <br> Alternatively, if you prefer to view the vignettes in R, you can
@@ -270,16 +369,18 @@ vignette("deepSTRAPP")
 utils::browseVignettes(package = "deepSTRAPP")
 ```
 
+<br>
+
 ## :bug: Found a bug?
 
-Thank you for finding it! Head over to the [GitHub Issues
+<br> Thank you for finding it! Head over to the [GitHub Issues
 tab](https://github.com/MaelDore/deepSTRAPP/issues) and let me know
 about it. <br> You can also [send me an
-e-mail](mailto:mael.dore@gmail.com). <br>
+e-mail](mailto:mael.dore@gmail.com). <br><br>
 
 ## :black_nib: How to cite deepSTRAPP
 
-For any use of **deepSTRAPP**:
+<br> For any use of **deepSTRAPP**:
 
 > Doré, M., & Blaimer, B. B., deepSTRAPP: Testing for differences in
 > diversification rates over deep evolutionary time. (DOI TBA)
@@ -289,18 +390,26 @@ As **deepSTRAPP** relies strongly on functions designed for the
 also cite this package:
 
 > Revell, L. J. (2024) phytools 2.0: an updated R ecosystem for
-> phylogenetic comparative methods (and other things). PeerJ, 12,
+> phylogenetic comparative methods (and other things). *PeerJ*, 12,
 > e16505. <https://doi.org/10.7717/peerj.16505>.
 
-If you use the modeling tools for trait evolution embedded in the
-function *prepare_trait_data()*, you should cite the [R package
-geiger](https://github.com/mwpennell/geiger-v2):
+If you use the modeling tools for continuous and categorical trait
+evolution embedded in the function *prepare_trait_data()*, you should
+cite the [R package geiger](https://github.com/mwpennell/geiger-v2):
 
 > Pennell, M.W., J.M. Eastman, G.J. Slater, J.W. Brown, J.C. Uyeda, R.G.
 > FitzJohn, M.E. Alfaro, and L.J. Harmon. 2014. geiger v2.0: an expanded
 > suite of methods for fitting macroevolutionary models to phylogenetic
-> trees. Bioinformatics 30:2216-2218.
+> trees. *Bioinformatics* 30:2216-2218.
 > <https://doi.org/10.1093/bioinformatics/btu181>.
+
+If you specifically use the function *prepare_trait_data()* to produce
+continuous stochastic maps, you should cite the [R package
+contsimmap](https://github.com/bstaggmartin/contsimmap/):
+
+> Martin, B. S., & Weber, M. G. (2026). Stochastic character mapping of
+> continuous traits on phylogenies. *Systematic Biology*, syag031.
+> <https://doi.org/10.1093/sysbio/syag031>.
 
 If you use the modeling tools for historical biogeography embedded in
 the function *prepare_trait_data()*, you should cite the [R package
@@ -308,5 +417,5 @@ BioGeoBEARS](http://phylo.wikidot.com/biogeobears):
 
 > Matzke, N. J. (2013). Probabilistic historical biogeography: new
 > models for founder-event speciation, imperfect detection, and fossils
-> allow improved accuracy and model-testing. Frontiers of Biogeography,
-> 5(4). <https://doi.org/10.21425/F5FBG19694>.
+> allow improved accuracy and model-testing. *Frontiers of
+> Biogeography*, 5(4). <https://doi.org/10.21425/F5FBG19694>.

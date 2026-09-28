@@ -8,7 +8,7 @@
 #'
 #'   * Step 1: Fit evolutionary models to trait data using Maximum Likelihood.
 #'   * Step 2: Select the best fitting model comparing AICc.
-#'   * Step 3: Infer ancestral characters estimates (ACE) at nodes.
+#'   * Step 3: Infer ancestral character estimates (ACE) at nodes.
 #'   * Step 4: Run stochastic mapping simulations to generate evolutionary histories
 #'     compatible with the best model and inferred ACE. (Only for categorical and biogeographic data)
 #'   * Step 5: Infer ancestral states along branches.
@@ -16,9 +16,9 @@
 #'     - For categorical and biogeographic data: compute posterior frequencies of each state/range
 #'       to produce a `densityMap` for each state/range.
 #'
-#' @param tip_data Named numerical or character string vector of trait values/states/ranges at tips.
+#' @param tip_data Named numeric or character vector of trait values/states/ranges at tips.
 #'   Names should be ordered as the tip labels in the phylogeny found in `phylo$tip.label`.
-#'   For biogeographic data, ranges should follow the coding scheme of BioGeoBEARS with a unique CAPITAL letter per unique areas
+#'   For biogeographic data, ranges should follow the coding scheme of BioGeoBEARS with a unique CAPITAL letter per unique area
 #'   (ex: A, B), combined to form multi-area ranges (Ex: AB). Alternatively, you can provide tip_data as a matrix or data.frame of
 #'   binary presence/absence in each area (coded as unique CAPITAL letter). In this case, columns are unique areas, rows are taxa,
 #'   and values are integer (0/1) signaling absence or presence of the taxa in the area.
@@ -35,24 +35,26 @@
 #'   Transitions with similar integers are estimated with a shared rate parameter.
 #'   Transitions with `0` represent rates that are fixed to zero (i.e., impossible transitions).
 #'   Diagonal must be populated with `NA`. `row.names(Q_matrix)` and `col.names(Q_matrix)` are the states.
-#'   Provide `"matrix"` among the model listed in 'evolutionary_models' to use the custom Q-matrix for modeling. Only for categorical data.
+#'   Provide `"matrix"` among the models listed in 'evolutionary_models' to use the custom Q-matrix for modeling. Only for categorical data.
 #' @param BioGeoBEARS_directory_path Character string. The path to the directory used to store input/output files generated
-#'   for/by BioGeoBEARS during biogeographic historical inferences. Use '/' to separate directory and sub-directories. It must end with '/'.
-#'   Only for biogeographic data.
+#'   for/by BioGeoBEARS during biogeographic historical inferences. Only for biogeographic data.
 #' @param keep_BioGeoBEARS_files Logical. Whether the `BioGeoBEARS_directory` and its content should be kept after the run. Default = `TRUE`. Only for biogeographic data.
 #' @param prefix_for_files Character string. Prefix to add to all BioGeoBEARS files stored in the `BioGeoBEARS_directory_path` if `keep_BioGeoBEARS_files = TRUE`.
 #'   Files will be exported such as 'prefix_*' with an underscore separating the prefix and the file name.
 #'   Default is `NULL` (no prefix is added). Only for biogeographic data.
-#' @param nb_cores Interger. Number of cores to use for parallel computation during BioGeoBEARS runs. Default = `1`. Only for biogeographic data.
-#' @param max_range_size Integer. Maximum number of unique areas encompassed by multi-range areas. Default = `2`. Only for biogeographic data.
+#' @param nb_cores Integer. Number of cores to use for parallel computation during BioGeoBEARS runs. Default = `1`. Only for biogeographic data.
+#' @param max_range_size Integer. Maximum number of unique areas encompassed by multi-area ranges. Default = `2`. Only for biogeographic data.
 #' @param split_multi_area_ranges Logical. Whether to split multi-area ranges across unique areas when mapping ranges.
 #'   Ex: For range EW, posterior probabilities will be split equally between Eastern Palearctic (E) and Western Palearctic (W).
 #'   Default = `FALSE`. Only for biogeographic data.
 #' @param ... Additional arguments to be passed down to the functions used to fit models (See `evolutionary_models`)
 #'   and produce simmaps with [phytools::make.simmap()] or `BioGeoBEARS::runBSM()`.
 #' @param res Integer. Define the number of time steps used to interpolate/estimate trait value/state/range in `contMap`/`densityMaps`. Default = `100`.
-#' @param nb_simulations Integer. Define the number of simulations generated for stochastic mapping. Default = `1000`. Only for "categorical" and "biogeographic" data.
-#' @param color_scale Vector of character string. List of colors to use to build the color scale with [grDevices::colorRampPalette()]
+#' @param run_stochastic_maps Logical. Whether to perform continuous stochastic mapping to account for uncertainty in ancestral trait estimates.
+#'   Only for continuous data (This is always 'TRUE' for categorical and biogeographic data).
+#'   This functionality is currently not available for total-evidence phylogenies (i.e., including fossils as tips).
+#' @param nb_simulations Integer. Define the number of simulations generated for stochastic mapping. Default = `100`.
+#' @param color_scale Character vector. List of colors to use to build the color scale with [grDevices::colorRampPalette()]
 #'   showing the evolution of a continuous trait on the `contMap`. From lowest values to highest values. Only for continuous data. Default = `NULL` will use the rainbow() color palette.
 #' @param colors_per_levels Named character string. To set the colors to use to map each state/range posterior probabilities. Names = states/ranges; values = colors.
 #'   If `NULL` (default), the `rainbow()` color scale will be used for categorical trait; the `BioGeoBEARS::get_colors_for_states_list_0based()` will be used for biogeographic ranges.
@@ -63,14 +65,15 @@
 #' @param add_ACE_pies Logical. Whether to add pies of posterior probabilities of states/ranges at internal nodes on the mapped phylogeny. Default = `TRUE`.
 #'   Only for categorical and biogeographic data.
 #' @param PDF_file_path Character string. If provided, the plot will be saved in a PDF file following the path provided here. The path must end with ".pdf".
-#' @param return_ace Logical. Whether the named vector of ancestral characters estimates (ACE) at internal nodes should be returned in the output. Default = `TRUE`.
+#' @param return_ace Logical. Whether the named vector of ancestral character estimates (ACE) at internal nodes should be returned in the output. Default = `TRUE`.
 #' @param return_BSM Logical. (Only for Biogeographic data) Whether the summary tables of anagenetic and cladogenetic events generated during the Biogeographic Stochastic Mapping (BSM)
 #'  process should be returned in the output. Default = `FALSE`.
 #' @param return_simmaps Logical. Whether the evolutionary histories simulated during stochastic mapping (i.e., `simmaps`) should be returned in the output.
-#'  Default = `TRUE`. Only for "categorical" and "biogeographic" data.
+#'  Default = `TRUE`. Only for "categorical" and "biogeographic" data. This is needed to be able to track which simulated histories provided which trait data in downstream analyses,
+#'  although it may create voluminous objects.
 #' @param return_best_model_fit Logical. Whether to include the output of the best fitting model in the function output. Default = `FALSE`.
 #' @param return_model_selection_df Logical. Whether to include the data.frame summarizing model comparisons used to select the best fitting model should be returned in the output. Default = `FALSE`.
-#' @param verbose Logical. Should progression be displayed? A message will be printed for every steps in the process. Default is `TRUE`.
+#' @param verbose Logical. Should progression be displayed? A message will be printed for every step in the process. Default is `TRUE`.
 #'
 #' @export
 #' @importFrom stats logLik
@@ -83,7 +86,7 @@
 #'
 #' @details Map trait evolution on a time-calibrated phylogeny in several steps:
 #'
-#'  Step 1: Models are fit using Maximum Likelihood approach:
+#'  Step 1: Models are fit using a Maximum Likelihood approach:
 #'    * For "continuous" data models are fit with [geiger::fitContinuous()]: "BM", "OU", "EB", "rate_trend", "lambda", "kappa", "delta". Default is `"BM"`.
 #'    * For "categorical" data models are fit with [geiger::fitDiscrete()]: "ER", "SYM", "ARD", "meristic", "matrix". Default is `"ARD"`.
 #'    * For "biogeographic" data models are fit with R package `BioGeoBEARS`: "BAYAREALIKE", "DIVALIKE", "DEC", "BAYAREALIKE+J", "DIVALIKE+J", "DEC+J". Default is `"DEC"`.
@@ -91,63 +94,80 @@
 #'  Step 2: Best model is identified among the list of `evolutionary_models` by comparing the corrected AIC (AICc)
 #'    and selecting the  model with lowest AICc.
 #'
-#'  Step 3: For continuous traits: Ancestral characters estimates (ACE) are inferred with [phytools::fastAnc] on a tree
+#'  Step 3: For continuous traits: Ancestral character estimates (ACE) are inferred with [phytools::fastAnc] on a tree
 #'    with modified branch lengths scaled to reflect the evolutionary rates estimated from the best model using [phytools::rescale()].
 #'
 #'  Step 4: Stochastic Mapping.
 #'
-#'    For categorical and biogeographic data, stochastic mapping simulations are performed to generate evolutionary histories
+#'    For categorical and biogeographic data, stochastic mapping simulations are performed by default to generate evolutionary histories
 #'    compatible with the best model and inferred ACE. Node states/ranges are drawn from the scaled marginal likelihoods of ACE,
-#'    and states/ranges shifts along branches are simulated according to the transition matrix Q estimated from the best fitting model.
+#'    and state/range shifts along branches are simulated according to the transition matrix Q estimated from the best fitting model.
+#'
+#'    For continuous trait data, stochastic mapping simulations are performed only if `run_stochastic_maps = TRUE`.
+#'    Evolutionary histories of continuous trait evolution, conditioned on the observed trait data and model fit,
+#'    including estimates of ancestral trait values and variance at nodes, are produced  with [contsimmap::make.contsimmap()].
 #'
 #'  Step 5: Infer ancestral states along branches.
-#'    * For continuous traits: ancestral trait values along branches are interpolated with [phytools::contMap()].
-#'      This provides quick estimates of trait value at any point in time, but it does not provide accurate ML estimates in
-#'      case of models that are time or trait-value dependent (such as "EB" or "OU") as the interpolation used to built the contMap is assuming
-#'      a constant rate along each branch. However, ancestral trait values at nodes remain accurate
-#'    * For categorical and biogeographic data: compute posterior frequencies of each state/range among the simulated evolutionary histories (`simmaps`)
-#'      to produce a `densityMap` for each state/range that reflects the changes along branches in probability of harboring a given state/range.
+#'    * For continuous traits:
+#'      * Ancestral values along branches are interpolated using [phytools::contMap()].
+#'        This provides quick estimates of trait value at any point in time, but does not account for uncertainty in trait estimates.
+#'        Moreover, it does not provide fully accurate ML estimates in  case of models that are time or trait-value dependent (such as "EB" or "OU")
+#'        as the interpolation used to build the contMap is assuming a constant rate along each branch. However, ancestral trait values at nodes remain accurate.
+#'        It produces a single `$contMap` representing the ML estimates of ancestral trait evolution across the phylogeny.
+#'      * If `run_stochastic_maps = TRUE`, ancestral values along branches are recorded across all simulated evolutionary histories
+#'        (i.e., continuous stochastic maps), thus accounting for uncertainty in trait estimates.
+#'        This is needed to apply the "paired" or "full" strategies to account for trait estimate uncertainty in deepSTRAPP tests
+#'        (See the uncertainty_strategy argument in run_deepSTRAPP_* functions).
+#'        It produces a list of `$contMaps`, each map representing a simulated ancestral trait evolution across the phylogeny.
+#'        This functionality is currently not available for total-evidence phylogenies (i.e., including fossils as tips)
+#'    * For categorical and biogeographic data: posterior frequencies of each state/range among the simulated evolutionary histories (`simmaps`)
+#'      are computed to produce a list of `$densityMaps`, one for each state/range, reflecting the changes along branches in probability of harboring a given state/range.
 #'
 #'  # Note on macroevolutionary models of trait evolution
 #'
 #'  This function provides an easy solution to map trait evolution on a time-calibrated phylogeny
-#'  and obtain the `contMap`/`densityMaps` objects needed to run the deepSTRAPP workflow ([run_deepSTRAPP_for_focal_time], [run_deepSTRAPP_over_time]).
+#'  and obtain the `contMaps`/`densityMaps` objects needed to run the deepSTRAPP workflow ([run_deepSTRAPP_for_focal_time], [run_deepSTRAPP_over_time]).
 #'  However, it does not explore the most complex options for trait evolution. You may need to explore more complex models to capture the dynamics of trait evolution.
-#'  such as trait-dependent multi-rate models ([phytools::brownie.lite()], [OUwie::OUwie]), Bayesian MCMC implementations allowing a thorough exploration
+#'  such as trait-dependent multi-rate models ([phytools::brownie.lite()], [OUwie::OUwie()]), Bayesian MCMC implementations allowing a thorough exploration
 #'  of location and number of regime shifts (Ex: BayesTraits, RevBayes), or RRphylo for a penalized phylogenetic ridge regression approach that allows regime shifts across all branches.
 #'
 #'  # Note on macroevolutionary models of biogeographic history
 #'
 #'  This function provides an easy solution to infer ancestral geographic ranges using the BioGeoBEARS framework.
-#'  It allows to directly compare model fits across 6 models: DEC, DEC+J, DIVALIKE, DIVALIKE+J, BAYAREALIKE, BAYAREALIKE+J.
-#'  It uses a step-wise approach by using MLE estimates of previous runs as staring parameter values when increasing complexity (adding +J parameters).
+#'  It allows you to directly compare model fits across 6 models: DEC, DEC+J, DIVALIKE, DIVALIKE+J, BAYAREALIKE, BAYAREALIKE+J.
+#'  It uses a step-wise approach by using MLE estimates of previous runs as starting parameter values when increasing complexity (adding +J parameters).
 #'  However, it does not explore the most complex options for historical biogeography. You may need to explore more complex models
 #'  to capture the dynamics of range evolution such as time-stratification with adjacency matrices, dispersal multipliers (+W),
 #'  distance-based dispersal probabilities (+X), or other features.
-#'  See for instance, \href{http://phylo.wikidot.com/biogeobears}{http://phylo.wikidot.com/biogeobears}).
+#'  See for instance, \href{http://phylo.wikidot.com/biogeobears}{http://phylo.wikidot.com/biogeobears}.
 #'
 #'  The R package `BioGeoBEARS` is needed for this function to work with biogeographic data.
 #'  Please install it manually from: \href{https://github.com/nmatzke/BioGeoBEARS}{https://github.com/nmatzke/BioGeoBEARS}.
 #'
-#' @return The function returns a list with at least two elements.
+#' @return The function returns a list with at least three elements.
 #'
 #'   * `$contMap` (For "continuous" data) Object of class `"contMap"`, typically generated with [phytools::contMap()],
-#'     that contains a phylogenetic tree and associated continuous trait mapping.
-#'   * `$densityMaps` (For "categorical" and "biogeographic" data) List of objects of class `"densityMap`,
+#'     that contains a phylogenetic tree and a unique continuous trait mapping representing
+#'     the interpolated ML estimates of ancestral trait evolution across the phylogeny.
+#'   * `$contMaps` (For "continuous" data, with `run_stochastic_maps = TRUE`) List of objects of class `"contMap"`,
+#'     each map representing a simulated ancestral trait evolution conditioned on the observed trait data and model fit.
+#'   * `$densityMaps` (For "categorical" and "biogeographic" data) List of objects of class `"densityMap"`,
 #'     typically generated with [phytools::densityMap()], that contains a phylogenetic tree and associated mapping of probability
-#'     to harbor a given state/range along branches. The list contains one `"densityMap` per state/range found in the `tip_data`.
+#'     to harbor a given state/range along branches. The list contains one `"densityMap"` per state/range found in the `tip_data`.
 #'   * `$densityMaps_all_ranges` (For "biogeographic" data only, if `split_multi_area_ranges = TRUE`) Same as `$densityMaps`,
-#'     but for all ranges including the multi-areas ranges (e.g., AB) while `$densityMaps` will display posterior probabilities for
-#'     unique areas only (e.g., A and B), with multi-areas ranges split across the unique areas they encompass.
+#'     but for all ranges including the multi-area ranges (e.g., AB) while `$densityMaps` will display posterior probabilities for
+#'     unique areas only (e.g., A and B), with multi-area ranges split across the unique areas they encompass.
+#'
 #'   * `$trait_data_type` Character string. Record the type of trait data. Either: "continuous", "categorical" or "biogeographic".
+#'   * `$nb_simulations` Integer. The number of simulations / stochastic maps produced.
 #'
 #'   If `return_ace = TRUE`,
-#'   * `$ace` For continuous traits: Named vector that record the ancestral characters estimates (ACE) at internal nodes.
-#'     For categorical and biogeographic data: Matrix that record the posterior probabilities of ancestral states/ranges (characters) estimates (ACE) at internal nodes.
+#'   * `$ace` For continuous traits: Named vector that records the ancestral character estimates (ACE) at internal nodes.
+#'     For categorical and biogeographic data: Matrix that records the posterior probabilities of ancestral states/ranges (characters) estimates (ACE) at internal nodes.
 #'     Rows are internal nodes. Columns are states/ranges. Values are posterior probabilities of each state per node.
-#'   * `$ace_all_ranges` For biogeographic data, if `split_multi_area_ranges = TRUE`: Named vector that record the ancestral characters estimates (ACE) at internal nodes,
-#'     but including all ranges observed in the simmaps, including the multi-areas ranges (e.g., AB), while `$ace` will display posterior probabilities
-#'     for unique areas only (e.g., A and B), with multi-areas ranges split across the unique areas they encompass.
+#'   * `$ace_all_ranges` For biogeographic data, if `split_multi_area_ranges = TRUE`: Named vector that records the ancestral character estimates (ACE) at internal nodes,
+#'     but including all ranges observed in the simmaps, including the multi-area ranges (e.g., AB), while `$ace` will display posterior probabilities
+#'     for unique areas only (e.g., A and B), with multi-area ranges split across the unique areas they encompass.
 #'
 #'  If `return_BSM = TRUE`, (Only for biogeographic data)
 #'   * `$BSM_output` List of two lists that contains summary information of cladogenetic (`$RES_caldo_events_tables`) and anagenetic (`$RES_ana_events_tables`) events
@@ -156,7 +176,8 @@
 #'
 #'   If `return_simmaps = TRUE`, (Only for categorical and biogeographic data)
 #'   * `$simmaps` List that contains as many objects of class `"simmap"` that `nb_simulations` were requested.
-#'     Each simmap object is a phylogeny with one simulated geographic history (i.e., transitions in geographic ranges) mapped along branches.
+#'     Each simmap object is a phylogeny with one simulated discrete character/geographic evolutionary history (i.e., transitions in character states/geographic ranges) mapped along branches.
+#'     This is needed to be able to track which simulated history provided which trait data in downstream analyses, although it may create voluminous objects.
 #'
 #'   If `return_best_model_fit = TRUE`,
 #'   * `$best_model_fit` List that provides the output of the best fitting model.
@@ -164,7 +185,7 @@
 #'   If `model_selection_df = TRUE`,
 #'   * `$model_selection_df` Data.frame that summarizes model comparisons used to select the best fitting model.
 #'
-#'   For biogeographic data, the function also produce input and output files associated with BioGeoBEARS and stored in the directory
+#'   For biogeographic data, the function also produces input and output files associated with BioGeoBEARS and stored in the directory
 #'   specified in `BioGeoBEARS_directory_path`. The directory and its content are kept if `keep_BioGeoBEARS_files = TRUE`
 #'
 #' @author Maël Doré
@@ -182,6 +203,9 @@
 #'
 #'  For BioGeoBEARS: Matzke, Nicholas J. (2018). BioGeoBEARS: BioGeography with Bayesian (and likelihood) Evolutionary Analysis with R Scripts.
 #'    version 1.1.1, published on GitHub on November 6, 2018. \doi{10.5281/zenodo.1478250}. Website: \url{http://phylo.wikidot.com/biogeobears}.
+#'
+#'  For continuous stochastic mapping in contsimmap: Martin, B. S., & Weber, M. G. (2026). Stochastic character mapping of continuous traits on phylogenies.
+#'  Systematic Biology, syag031. \doi{10.1093/sysbio/syag031}.
 #'
 #' @examples
 #' # ----- Example 1: Continuous data ----- #
@@ -240,7 +264,7 @@
 #' # Set symmetrical rates between state 2 ("kiss") and state 3 ("suction")
 #' Q_matrix = rbind(c(NA, 0, 0), c(1, NA, 2), c(0, 2, NA))
 #'
-#' # Set colors per states
+#' # Set colors per state
 #' colors_per_states <- c("limegreen", "orange", "dodgerblue")
 #' names(colors_per_states) <- c("bite", "kiss", "suction")
 #'
@@ -295,6 +319,11 @@
 #'  names(colors_per_ranges) <- c("A", "B")
 #'
 #'  \donttest{ # (May take several minutes to run)
+#'
+#'  # Load ape and BioGeoBEARS to use models internally
+#'  library(ape)
+#'  library(BioGeoBEARS)
+#'
 #'  ## Run evolutionary models
 #'  eel_biogeo_data <- prepare_trait_data(
 #'     tip_data = eel_data,
@@ -361,8 +390,9 @@ prepare_trait_data <- function (
     max_range_size = 2,
     split_multi_area_ranges = FALSE,
     ..., # To allow to pass down arguments in the functions used to fit the models
-    res = 100, # Number of time steps used to interpolate trait value in the contMap
-    nb_simulations = 1000, # Only for categorical and biogeographic data
+    res = 100, # Number of time steps used to interpolate trait value in the contMap(s)
+    run_stochastic_maps = FALSE, # Only for continuous data (always 'TRUE' for categorical and biogeographic data)
+    nb_simulations = 100,
     color_scale = NULL, # Only for continuous data
     colors_per_levels = NULL, # Only for categorical and biogeographic data. To set the colors to use to map each state/range posterior probabilities
     plot_map = TRUE,
@@ -379,8 +409,21 @@ prepare_trait_data <- function (
   ### Control for BioGeoBEARS install
   if ((trait_data_type == "biogeographic") & !requireNamespace("BioGeoBEARS", quietly = TRUE))
   {
-    stop("Package 'BioGeoBEARS' is needed for this function to work with biogeographic data.
-       Please install it manually from: https://github.com/nmatzke/BioGeoBEARS")
+    stop("Package 'BioGeoBEARS' is needed to work with biogeographic data.
+       Please install it manually from: https://github.com/nmatzke/BioGeoBEARS;
+       or from the alterative deepSTRAPP repository (https://maeldore.github.io/drat).
+       For instructions, see the Dependencies section on deepSTRAPP homepage (https://github.com/MaelDore/deepSTRAPP).")
+  }
+
+  ## Control for contsimmap install
+  if ((trait_data_type == "continuous") & (run_stochastic_maps == TRUE) & !requireNamespace("contsimmap", quietly = TRUE))
+  {
+    stop("Package 'contsimmap' is required for perform continuous stochastic mapping.
+       Please install it manually from: https://github.com/bstaggmartin/contsimmap;
+       or from the alterative deepSTRAPP repository (https://maeldore.github.io/drat).
+       For instructions, see the Dependencies section on deepSTRAPP homepage (https://github.com/MaelDore/deepSTRAPP).
+
+       Alternatively, you can set 'run_stochastic_maps == FALSE', and perform deepSTRAPP tests on ML ancestral trait estimates.")
   }
 
   ### Check input validity
@@ -443,7 +486,7 @@ prepare_trait_data <- function (
     {
       stop("For 'trait_data_type = biogeographic', 'tip_data' must be a named vector of character strings providing tip ranges.\n",
            "Alternatively, you can provide a matrix/data.frame providing presence/absence binary information (0/1).\n",
-           "In this case, colnames(tip_data) must be unique areas symbolized by a unique UPPERCASE letter each. row.names(tip_data) must be taxa named as in the phylogeny. Data must be numerical 0/1.\n",
+           "In this case, colnames(tip_data) must be unique areas symbolized by a unique UPPERCASE letter each. row.names(tip_data) must be taxa named as in the phylogeny. Data must be numeric binary: 0/1.\n",
            "Taxa with multi-area range should record several presences (1) in their row.")
     }
 
@@ -467,9 +510,9 @@ prepare_trait_data <- function (
     ## seed
     if (!is.null(seed))
     {
-      if (!is.numeric(seed))
+      if (!(seed - round(seed) == 0))
       {
-        stop(paste0("'seed' must be an interger."))
+        stop(paste0("'seed' must be an integer."))
       }
     }
 
@@ -497,14 +540,43 @@ prepare_trait_data <- function (
     ## Other checks are carried in dedicated sub-functions
   }
 
-  ## Save initial par() and reassign them on exit
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar))
+  ## Save the graphical parameters on entry and, on exit, restore only those this function actually changed.
+
+  # List graphical parameters describing the plot that now exists (Never to restore as they describe the current plot state)
+  plot_state_par_names <- c("usr", "plt", "fig", "mfg", "new", "xaxp", "yaxp", "pin")
+  # Save current graphic parameters
+  entry_par <- par(no.readonly = TRUE)
+
+  # On exit, compare changes in par and restore the ones that have change, but the plot_state_par
+  on.exit({
+    # List par on exit
+    exit_par <- par(no.readonly = TRUE)
+    # Identify differences with initial parameters
+    changed_par_names <- names(entry_par)[!vapply(X = names(entry_par),
+                                                  FUN = function (x) { isTRUE(all.equal(entry_par[[x]], exit_par[[x]])) },
+                                                  FUN.VALUE = logical(1))]
+    # Exclude plot state parameters from the restore
+    changed_par_names <- setdiff(changed_par_names, plot_state_par_names)
+    # Restore parameters if any has changed
+    if (length(changed_par_names) > 0)
+    {
+      par(entry_par[changed_par_names])
+    }
+
+    # Force new to FALSE, so the next plot calling plot.new() start on a new clean window,
+    # But only if we actually plot something
+    if (isTRUE(plot_map) || (isTRUE(exit_par$new) && !isTRUE(entry_par$new)))
+    {
+      par(new = FALSE)
+    }
+  }, add = TRUE)
+
 
   ## Filter list of additional arguments to avoid warnings from functions
   add_args <- list(...)
   args_names_for_fitContinuous <- c("SE", "bounds", "control", "ncores")
   args_names_for_fitDiscrete <- c("transform", "bounds", "control", "ncores", "symmetric")
+  args_names_for_make.contsimmap <- c("Xsig2", "Ysig2", "mu")
   args_names_for_make.simmap <- c("pi", "message", "Q", "tol", "vQ", "prior")
   args_names_to_define_BioGeoBEARS_run <- c("abbr", "description", "BioGeoBEARS_model_object", "timesfn", "distsfn",
                                              "dispersal_multipliers_fn", "area_of_areas_fn", "areas_allowed_fn",
@@ -517,6 +589,7 @@ prepare_trait_data <- function (
   ## Extract additional arguments
   args_for_fitContinuous <- add_args[names(add_args) %in% args_names_for_fitContinuous]
   args_for_fitDiscrete <- add_args[names(add_args) %in% args_names_for_fitDiscrete]
+  args_for_make.contsimmap <- add_args[names(add_args) %in% args_names_for_make.contsimmap]
   args_for_make.simmap <- add_args[names(add_args) %in% args_names_for_make.simmap]
   args_to_define_BioGeoBEARS_run <- add_args[names(add_args) %in% args_names_to_define_BioGeoBEARS_run]
   args_to_define_runBSM <- add_args[names(add_args) %in% args_names_to_define_runBSM]
@@ -538,7 +611,10 @@ prepare_trait_data <- function (
              evolutionary_models = evolutionary_models, # Default = "BM" for continuous data
              # ..., # Additional arguments for geiger::fitContinuous()
              args_for_fitContinuous = args_for_fitContinuous,
+             args_for_make.contsimmap = args_for_make.contsimmap,
              res = res,
+             run_stochastic_maps = run_stochastic_maps,
+             nb_simulations = nb_simulations,
              color_scale = color_scale,
              plot_map = plot_map,
              PDF_file_path = PDF_file_path,
@@ -559,7 +635,7 @@ prepare_trait_data <- function (
              args_for_fitDiscrete = args_for_fitDiscrete, # Additional arguments for geiger::fitDiscrete()
              args_for_make.simmap = args_for_make.simmap, # Additional arguments for phytools::make.simmap()
              res = res,
-             nb_simulations = nb_simulations, # Only for categorical and biogeographic data
+             nb_simulations = nb_simulations,
              colors_per_levels = colors_per_levels, # Only for categorical and biogeographic data
              plot_map = plot_map,
              plot_overlay = plot_overlay, # Only for categorical and biogeographic data
@@ -587,7 +663,7 @@ prepare_trait_data <- function (
              # ..., # Additional arguments for BioGeoBEARS functions
              args_to_define_BioGeoBEARS_run = args_to_define_BioGeoBEARS_run, # Additional arguments for BioGeoBEARS::define_BioGeoBEARS_run()
              args_to_define_runBSM, # Additional arguments for BioGeoBEARS::runBSM()
-             nb_simulations = nb_simulations, # Only for categorical and biogeographic data
+             nb_simulations = nb_simulations,
              res = res,
              colors_per_levels = colors_per_levels, # Only for categorical and biogeographic data
              plot_map = plot_map,
@@ -616,7 +692,10 @@ prepare_trait_data_for_continuous_data <- function (
     evolutionary_models = "BM", # Default = "BM" for continuous data
     # ..., # Additional arguments for geiger::fitContinuous()
     args_for_fitContinuous = NULL, # Additional arguments for geiger::fitContinuous()
+    args_for_make.contsimmap = NULL, # Additional arguments for contsimmap::make.contsimmap()
     res = 100,
+    run_stochastic_maps = FALSE,
+    nb_simulations = 100,
     color_scale = NULL,
     plot_map = TRUE,
     PDF_file_path = NULL,
@@ -626,6 +705,17 @@ prepare_trait_data_for_continuous_data <- function (
     verbose = TRUE
     )
 {
+  ## Control for contsimmap install
+  if ((run_stochastic_maps == TRUE) & !requireNamespace("contsimmap", quietly = TRUE))
+  {
+    stop("Package 'contsimmap' is required for perform continuous stochastic mapping.
+       Please install it manually from: https://github.com/bstaggmartin/contsimmap;
+       or from the alterative deepSTRAPP repository (https://maeldore.github.io/drat).
+       For instructions, see the Dependencies section on deepSTRAPP homepage (https://github.com/MaelDore/deepSTRAPP).
+
+       Alternatively, you can set 'run_stochastic_maps == FALSE', and perform deepSTRAPP tests on ML ancestral trait estimates.")
+  }
+
   ### Check input validity
   {
     ## evolutionary_models
@@ -817,7 +907,7 @@ prepare_trait_data_for_continuous_data <- function (
 
   ### Step 3 - Get ACE (useful in all cases to build the contMap)
 
-  if (verbose) { cat(paste0(Sys.time(), " - Infer Ancestral Character Estimates from the best fitting model: ",best_model_name,".\n\n")) }
+  if (verbose) { cat(paste0("\n", Sys.time(), " - Infer Ancestral Character Estimates from the best fitting model: ",best_model_name,".\n\n")) }
 
   ## Rescale the tree such as the relative branch length account for trait rates in the best fitting model
   # ?geiger::rescale.phylo
@@ -832,18 +922,86 @@ prepare_trait_data_for_continuous_data <- function (
   # Rescale phylogeny using the estimated parameters from the best model
   rescaled_phylo <- do.call(what = rescaled_phylo_fn, args = best_model_args)
 
-  ## Run ACE inference with BM on transformed tree
-  # ?phytools::fastAnc
+  # plot(phylo)
+  # plot(rescaled_phylo)
 
-  ACE_output <- phytools::fastAnc(tree = rescaled_phylo,
-                                  x = tip_data,
-                                  vars = FALSE, # Compute the variance of ancestral state estimates
-                                  CI = FALSE) # Compute the 95% CI of ancestral state estimates
-  # ACE_output
+  ## Run ACE inference with BM on transformed tree
+
+  # Use phytools::fastAnc if no continuous stochastic mapping is required
+  if (!run_stochastic_maps)
+  {
+    ## Run BM model on transformed tree to get ACE
+    # ?phytools::fastAnc = Phylogenetic Independent Contrasts
+
+    ACE_output <- phytools::fastAnc(tree = rescaled_phylo,
+                                    x = tip_data,
+                                    vars = FALSE, # Compute the variance of ancestral state estimates
+                                    CI = FALSE) # Compute the 95% CI of ancestral state estimates
+  } else {
+    # Evolutionary rate is needed to parametrize the continuous stochastic map simulations
+
+    # ?phytools::anc.ML() = ML optimization
+
+    ## Use phytools::anc.ML() to get ACE and evolutionary rate = sigma²
+    BM_fit <- phytools::anc.ML(tree = rescaled_phylo,
+                               x = tip_data,
+                               model = "BM")
+    # Extract ACE
+    ACE_output <- BM_fit$ace
+
+    # Extract evolutionary rate = sigma²
+    sigma2 <- BM_fit$sig2
+  }
+
+  # ACE_output are node ML ancestral estimates. They are required for interpolating ML estimates with phytools::contMap(),
+  # but not to generate continuous stochastic maps with contsimmap::make.contsimmap()
+
+  ### Step 4 - Create continuous stochastic maps (contMaps) using ACE computed with the best fitting model
+
+  if (run_stochastic_maps) # Only if stochastic mapping is requested
+  {
+    if (verbose) { cat(paste0(Sys.time(), " - Create continuous stochastic maps (contMaps) = simulations of trait evolutionary histories conditioned to the observed trait data and model fit.\n\n")) }
+
+    ## Run continuous stochastic mapping on rescaled phylo (to account for best model)
+
+    # contsimmap <- contsimmap::make.contsimmap(tree = rescaled_phylo,
+    #                                           trait.data = tip_data,
+    #                                           nsims = nb_simulations, # Number of stochastic maps
+    #                                           res = res, # Number of time steps
+    #                                           # ..., # Additional arguments for make.contsimmap()
+    #                                           verbose = verbose)
+
+    contsimmap <- do.call(what = contsimmap::make.contsimmap,
+                          args =  c(list(tree = rescaled_phylo,
+                                         trait.data = tip_data,
+                                         nsims = nb_simulations, # Number of stochastic maps
+                                         res = res, # Number of time steps
+                                         Xsig2 = list(sigma2), # Extract evolutionary rate = sigma²
+                                         verbose = verbose),
+                                    args_for_make.contsimmap)) # Additional arguments for make.contsimmap()
+
+    ## Convert output into list of contMaps
+    contMaps_list <- convert_contsimmap_to_contMaps(contsimmap = contsimmap, verbose = verbose)
+    # plot_contMap(contMaps_list[[1]])
+
+    ## Adjust contMaps to initial scale
+    contMaps_list <- lapply(X = contMaps_list, FUN = restore_contMap_branch_lengths, initial_tree = phylo)
+
+    ## Update color scale if requested
+    if (!is.null(color_scale))
+    {
+      # Update color palette in contMaps
+      contMaps_list <- lapply(X = contMaps_list, FUN = phytools::setMap, colors = color_scale)
+      # print(contMaps_list[[1]]$cols)
+      # plot_contMap(contMaps_list[[50]])
+    }
+  }
 
   ### Step 5 - Create contMap using ACE computed with the best fitting model
 
-  if (verbose) { cat(paste0(Sys.time(), " - Create contMap by interpolating values along branches.\n\n")) }
+  if (verbose) { cat(paste0(Sys.time(), " - Create contMap of ML estimates by interpolating values along branches.\n\n")) }
+
+  # Use both tip_data and ACE_output as inputs. Used to interpolate ML estimates along branches with phytools::contMap().
 
   contMap <- phytools::contMap(tree = phylo,
                                method = "user",
@@ -883,14 +1041,21 @@ prepare_trait_data_for_continuous_data <- function (
   }
 
   ## Build output
-  output <- list(contMap = contMap,
-                 trait_data_type = "continuous")
+  output <- list(contMap = contMap)
+  # Include stochastic maps if requested
+  if (run_stochastic_maps) { output$contMaps <- contMaps_list }
+
+  # Inform trait_data_type
+  output$trait_data_type <- "continuous"
+  # Inform nb_simulations
+  if (run_stochastic_maps) { output$nb_simulations <- nb_simulations } else { output$nb_simulations <- NA }
+
   # Include ACE if requested
-  if(return_ace) { output$ace <- ACE_output }
+  if (return_ace) { output$ace <- ACE_output }
   # Include output of best model if requested
-  if(return_best_model_fit) { output$best_model_fit <- best_model_fit }
+  if (return_best_model_fit) { output$best_model_fit <- best_model_fit }
   # Include df for model comparison if requested
-  if(return_model_selection_df) { output$model_selection_df <- models_comparison$models_comparison_df }
+  if (return_model_selection_df) { output$model_selection_df <- models_comparison$models_comparison_df }
 
   ## Return output
   return(invisible(output))
@@ -909,7 +1074,7 @@ prepare_trait_data_for_categorical_data <- function (
     args_for_fitDiscrete = NULL, # Additional arguments for geiger::fitDiscrete()
     args_for_make.simmap = NULL, # Additional arguments for phytools::make.simmap()
     res = 100,
-    nb_simulations = 1000, # Only for categorical and biogeographic data
+    nb_simulations = 100, # Only for categorical and biogeographic data
     colors_per_levels = NULL,
     plot_map = TRUE,
     plot_overlay = TRUE, # Only for categorical and biogeographic data
@@ -1317,7 +1482,9 @@ prepare_trait_data_for_categorical_data <- function (
 
   ## Build output
   output <- list(densityMaps = densityMaps_all_states,
-                 trait_data_type = "categorical")
+                 trait_data_type = "categorical",
+                 nb_simulations = nb_simulations)
+
   # Include simmaps if requested
   if(return_simmaps) { output$simmaps <- all_simmaps } # Filter to include only internal nodes (to be consistent with continuous trait)
   # Include ACE if requested
@@ -1349,7 +1516,7 @@ prepare_trait_data_for_biogeographic_data <- function (
     args_to_define_runBSM, # Additional arguments for BioGeoBEARS::runBSM()
     res = 100,
     colors_per_levels = NULL,
-    nb_simulations = 1000, # Only for categorical and biogeographic data
+    nb_simulations = 100, # Only for categorical and biogeographic data
     plot_map = TRUE,
     plot_overlay = TRUE, # Only for categorical and biogeographic data
     PDF_file_path = NULL,
@@ -1363,8 +1530,10 @@ prepare_trait_data_for_biogeographic_data <- function (
   ## Control for BioGeoBEARS install
   if (!requireNamespace("BioGeoBEARS", quietly = TRUE))
   {
-    stop("Package 'BioGeoBEARS' is needed for this function to work.
-       Please install it manually from: https://github.com/nmatzke/BioGeoBEARS")
+    stop("Package 'BioGeoBEARS' is needed to work with biogeographic data.
+       Please install it manually from: https://github.com/nmatzke/BioGeoBEARS;
+       or from the alterative deepSTRAPP repository (https://maeldore.github.io/drat).
+       For instructions, see the Dependencies section on deepSTRAPP homepage (https://github.com/MaelDore/deepSTRAPP).")
   }
 
   ## Convert tip_data into vector of character strings if needed
@@ -1375,7 +1544,7 @@ prepare_trait_data_for_biogeographic_data <- function (
     if (!all(PA_test))
     {
       stop("You provided 'tip_data' for 'biogeographic' data as a matrix/data.frame.\n",
-           "Please ensure presences/absences are recorded as numerical 0/1 values.\n")
+           "Please ensure presences/absences are recorded as numeric binary 0/1 values.\n")
     }
     unique_letters_test <- all(nchar(colnames(tip_data)) == 1)
     if (!all(unique_letters_test))
@@ -1446,11 +1615,11 @@ prepare_trait_data_for_biogeographic_data <- function (
     }
 
     ## BioGeoBEARS_directory_path
-    # BioGeoBEARS_directory_path must be a directory, so it must end with '/'
-    if (!stringr::str_detect(BioGeoBEARS_directory_path, pattern = "/$"))
-    {
-      stop(paste0("'BioGeoBEARS_directory_path' must end with '/'"))
-    }
+    # # BioGeoBEARS_directory_path must be a directory, so it must end with '/'
+    # if (!stringr::str_detect(BioGeoBEARS_directory_path, pattern = "/$"))
+    # {
+    #   stop(paste0("'BioGeoBEARS_directory_path' must end with '/'"))
+    # }
     # Create the directory if it does not exist yet
     if (!dir.exists(BioGeoBEARS_directory_path))
     {
@@ -1542,12 +1711,12 @@ prepare_trait_data_for_biogeographic_data <- function (
 
   ## Prepare phylogeny for BioGeoBEARS
 
-  # Build path to phylogeny
+  # Build absolute path to phylogeny
   if (is.null(prefix_for_files))
   {
-    path_to_phylo <- BioGeoBEARS::np(paste0(BioGeoBEARS_directory_path, "phylo.tree"))
+    path_to_phylo <- BioGeoBEARS::np(file.path(paste0(BioGeoBEARS_directory_path, "phylo.tree")))
   } else {
-    path_to_phylo <- BioGeoBEARS::np(paste0(BioGeoBEARS_directory_path, prefix_for_files,"_phylo.tree"))
+    path_to_phylo <- BioGeoBEARS::np(file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_phylo.tree")))
   }
   # Export phylogeny in Newick format
   write.tree(phylo, file = path_to_phylo)
@@ -1573,7 +1742,7 @@ prepare_trait_data_for_biogeographic_data <- function (
   }
   # Extract binary df of presence/absence
   binary_df <- ranges_df[, -1]
-  # Convert character strings into numerical factors
+  # Convert character strings into numeric factors
   binary_df_num <- as.data.frame(apply(X = binary_df, MARGIN = 2, FUN = as.numeric))
   row.names(binary_df_num) <- names(tip_data)
   names(binary_df_num) <- unique_areas
@@ -1584,9 +1753,9 @@ prepare_trait_data_for_biogeographic_data <- function (
   # Set path to tip ranges object
   if (is.null(prefix_for_files))
   {
-    path_to_tip_ranges <- BioGeoBEARS::np(paste0(BioGeoBEARS_directory_path,"tip_ranges.data"))
+    path_to_tip_ranges <- BioGeoBEARS::np(file.path(BioGeoBEARS_directory_path, "tip_ranges.data"))
   } else {
-    path_to_tip_ranges <- BioGeoBEARS::np(paste0(BioGeoBEARS_directory_path,prefix_for_files,"_tip_ranges.data"))
+    path_to_tip_ranges <- BioGeoBEARS::np(file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_tip_ranges.data")))
   }
 
   # Export tip ranges in Lagrange/PHYLIP format
@@ -1824,9 +1993,9 @@ prepare_trait_data_for_biogeographic_data <- function (
     # Open log file
     if (is.null(prefix_for_files))
     {
-      log_file <- file(paste0(BioGeoBEARS_directory_path,"DEC_run_log.txt"), open = "wt")
+      log_file <- file(file.path(BioGeoBEARS_directory_path, "DEC_run_log.txt"), open = "wt")
     } else {
-      log_file <- file(paste0(BioGeoBEARS_directory_path,prefix_for_files,"_DEC_run_log.txt"), open = "wt")
+      log_file <- file(file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_DEC_run_log.txt")), open = "wt")
     }
 
     # Run model while saving logs
@@ -1850,18 +2019,18 @@ prepare_trait_data_for_biogeographic_data <- function (
       # Save model fit
       if (is.null(prefix_for_files))
       {
-        saveRDS(object = DEC_fit, file = paste0(BioGeoBEARS_directory_path,"DEC_fit.rds"))
+        saveRDS(object = DEC_fit, file = file.path(BioGeoBEARS_directory_path, "DEC_fit.rds"))
       } else {
-        saveRDS(object = DEC_fit, file = paste0(BioGeoBEARS_directory_path,prefix_for_files,"_DEC_fit.rds"))
+        saveRDS(object = DEC_fit, file = file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_DEC_fit.rds")))
       }
 
     } else {
       # Remove log if DEC model not requested in outputs
       if (is.null(prefix_for_files))
       {
-        file.remove(file.path(paste0(BioGeoBEARS_directory_path,"DEC_run_log.txt")))
+        file.remove(file.path(BioGeoBEARS_directory_path,"DEC_run_log.txt"))
       } else {
-        file.remove(file.path(paste0(BioGeoBEARS_directory_path,prefix_for_files,"_DEC_run_log.txt")))
+        file.remove(file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_DEC_run_log.txt")))
       }
     }
   }
@@ -1883,9 +2052,9 @@ prepare_trait_data_for_biogeographic_data <- function (
     # Open log file
     if (is.null(prefix_for_files))
     {
-      log_file <- file(paste0(BioGeoBEARS_directory_path,"DEC_J_run_log.txt"), open = "wt")
+      log_file <- file(file.path(BioGeoBEARS_directory_path, "DEC_J_run_log.txt"), open = "wt")
     } else {
-      log_file <- file(paste0(BioGeoBEARS_directory_path,prefix_for_files,"_DEC_J_run_log.txt"), open = "wt")
+      log_file <- file(file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_DEC_J_run_log.txt")), open = "wt")
     }
 
     # Run model while saving logs
@@ -1903,9 +2072,9 @@ prepare_trait_data_for_biogeographic_data <- function (
     # Save model fit
     if (is.null(prefix_for_files))
     {
-      saveRDS(object = DEC_J_fit, file = paste0(BioGeoBEARS_directory_path,"DEC_J_fit.rds"))
+      saveRDS(object = DEC_J_fit, file = file.path(BioGeoBEARS_directory_path, "DEC_J_fit.rds"))
     } else {
-      saveRDS(object = DEC_J_fit, file = paste0(BioGeoBEARS_directory_path,prefix_for_files,"_DEC_J_fit.rds"))
+      saveRDS(object = DEC_J_fit, file = file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_DEC_J_fit.rds")))
     }
 
     # Store output
@@ -1921,9 +2090,9 @@ prepare_trait_data_for_biogeographic_data <- function (
     # Open log file
     if (is.null(prefix_for_files))
     {
-      log_file <- file(paste0(BioGeoBEARS_directory_path,"DIVALIKE_run_log.txt"), open = "wt")
+      log_file <- file(file.path(BioGeoBEARS_directory_path, "DIVALIKE_run_log.txt"), open = "wt")
     } else {
-      log_file <- file(paste0(BioGeoBEARS_directory_path,prefix_for_files,"_DIVALIKE_run_log.txt"), open = "wt")
+      log_file <- file(file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_DIVALIKE_run_log.txt")), open = "wt")
     }
 
     # Run model while saving logs
@@ -1947,18 +2116,18 @@ prepare_trait_data_for_biogeographic_data <- function (
       # Save model fit
       if (is.null(prefix_for_files))
       {
-        saveRDS(object = DIVALIKE_fit, file = paste0(BioGeoBEARS_directory_path,"DIVALIKE_fit.rds"))
+        saveRDS(object = DIVALIKE_fit, file = file.path(BioGeoBEARS_directory_path, "DIVALIKE_fit.rds"))
       } else {
-        saveRDS(object = DIVALIKE_fit, file = paste0(BioGeoBEARS_directory_path,prefix_for_files,"_DIVALIKE_fit.rds"))
+        saveRDS(object = DIVALIKE_fit, file = file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_DIVALIKE_fit.rds")))
       }
 
     } else {
       # Remove log if DIVALIKE model not requested in outputs
       if (is.null(prefix_for_files))
       {
-        file.remove(file.path(paste0(BioGeoBEARS_directory_path,"DIVALIKE_run_log.txt")))
+        file.remove(file.path(BioGeoBEARS_directory_path,"DIVALIKE_run_log.txt"))
       } else {
-        file.remove(file.path(paste0(BioGeoBEARS_directory_path,prefix_for_files,"_DIVALIKE_run_log.txt")))
+        file.remove(file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_DIVALIKE_run_log.txt")))
       }
     }
   }
@@ -1980,9 +2149,9 @@ prepare_trait_data_for_biogeographic_data <- function (
     # Open log file
     if (is.null(prefix_for_files))
     {
-      log_file <- file(paste0(BioGeoBEARS_directory_path,"DIVALIKE_J_run_log.txt"), open = "wt")
+      log_file <- file(file.path(BioGeoBEARS_directory_path, "DIVALIKE_J_run_log.txt"), open = "wt")
     } else {
-      log_file <- file(paste0(BioGeoBEARS_directory_path,prefix_for_files,"_DIVALIKE_J_run_log.txt"), open = "wt")
+      log_file <- file(file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_DIVALIKE_J_run_log.txt")), open = "wt")
     }
 
     # Run model while saving logs
@@ -2000,9 +2169,9 @@ prepare_trait_data_for_biogeographic_data <- function (
     # Save model fit
     if (is.null(prefix_for_files))
     {
-      saveRDS(object = DIVALIKE_J_fit, file = paste0(BioGeoBEARS_directory_path,"DIVALIKE_J_fit.rds"))
+      saveRDS(object = DIVALIKE_J_fit, file = file.path(BioGeoBEARS_directory_path, "DIVALIKE_J_fit.rds"))
     } else {
-      saveRDS(object = DIVALIKE_J_fit, file = paste0(BioGeoBEARS_directory_path,prefix_for_files,"_DIVALIKE_J_fit.rds"))
+      saveRDS(object = DIVALIKE_J_fit, file = file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_DIVALIKE_J_fit.rds")))
     }
 
     # Store output
@@ -2018,9 +2187,9 @@ prepare_trait_data_for_biogeographic_data <- function (
     # Open log file
     if (is.null(prefix_for_files))
     {
-      log_file <- file(paste0(BioGeoBEARS_directory_path,"BAYAREALIKE_run_log.txt"), open = "wt")
+      log_file <- file(file.path(BioGeoBEARS_directory_path, "BAYAREALIKE_run_log.txt"), open = "wt")
     } else {
-      log_file <- file(paste0(BioGeoBEARS_directory_path,prefix_for_files,"_BAYAREALIKE_run_log.txt"), open = "wt")
+      log_file <- file(file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_BAYAREALIKE_run_log.txt")), open = "wt")
     }
 
     # Run model while saving logs
@@ -2044,18 +2213,18 @@ prepare_trait_data_for_biogeographic_data <- function (
       # Save model fit
       if (is.null(prefix_for_files))
       {
-        saveRDS(object = BAYAREALIKE_fit, file = paste0(BioGeoBEARS_directory_path,"BAYAREALIKE_fit.rds"))
+        saveRDS(object = BAYAREALIKE_fit, file = file.path(BioGeoBEARS_directory_path, "BAYAREALIKE_fit.rds"))
       } else {
-        saveRDS(object = BAYAREALIKE_fit, file = paste0(BioGeoBEARS_directory_path,prefix_for_files,"_BAYAREALIKE_fit.rds"))
+        saveRDS(object = BAYAREALIKE_fit, file = file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_BAYAREALIKE_fit.rds")))
       }
 
     } else {
       # Remove log if DIVALIKE model not requested in outputs
       if (is.null(prefix_for_files))
       {
-        file.remove(file.path(paste0(BioGeoBEARS_directory_path,"BAYAREALIKE_run_log.txt")))
+        file.remove(file.path(BioGeoBEARS_directory_path, "BAYAREALIKE_run_log.txt"))
       } else {
-        file.remove(file.path(paste0(BioGeoBEARS_directory_path,prefix_for_files,"_BAYAREALIKE_run_log.txt")))
+        file.remove(file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_BAYAREALIKE_run_log.txt")))
       }
     }
   }
@@ -2077,9 +2246,9 @@ prepare_trait_data_for_biogeographic_data <- function (
     # Open log file
     if (is.null(prefix_for_files))
     {
-      log_file <- file(paste0(BioGeoBEARS_directory_path,"BAYAREALIKE_J_run_log.txt"), open = "wt")
+      log_file <- file(file.path(BioGeoBEARS_directory_path, "BAYAREALIKE_J_run_log.txt"), open = "wt")
     } else {
-      log_file <- file(paste0(BioGeoBEARS_directory_path,prefix_for_files,"_BAYAREALIKE_J_run_log.txt"), open = "wt")
+      log_file <- file(file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_BAYAREALIKE_J_run_log.txt")), open = "wt")
     }
 
     # Run model while saving logs
@@ -2097,9 +2266,9 @@ prepare_trait_data_for_biogeographic_data <- function (
     # Save model fit
     if (is.null(prefix_for_files))
     {
-      saveRDS(object = BAYAREALIKE_J_fit, file = paste0(BioGeoBEARS_directory_path,"BAYAREALIKE_J_fit.rds"))
+      saveRDS(object = BAYAREALIKE_J_fit, file = file.path(BioGeoBEARS_directory_path, "BAYAREALIKE_J_fit.rds"))
     } else {
-      saveRDS(object = BAYAREALIKE_J_fit, file = paste0(BioGeoBEARS_directory_path,prefix_for_files,"_BAYAREALIKE_J_fit.rds"))
+      saveRDS(object = BAYAREALIKE_J_fit, file = file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_BAYAREALIKE_J_fit.rds")))
     }
 
     # Store output
@@ -2169,16 +2338,16 @@ prepare_trait_data_for_biogeographic_data <- function (
   ## Rename BSM outputs
   if (!is.null(prefix_for_files))
   {
-    file.rename(from = file.path(paste0(BioGeoBEARS_directory_path,"RES_ana_events_tables.Rdata")),
-                to = file.path(paste0(BioGeoBEARS_directory_path,prefix_for_files,"_RES_ana_events_tables.Rdata")))
-    file.rename(from = file.path(paste0(BioGeoBEARS_directory_path,"RES_ana_events_tables_PARTIAL.Rdata")),
-                to = file.path(paste0(BioGeoBEARS_directory_path,prefix_for_files,"_RES_ana_events_tables_PARTIAL.Rdata")))
-    file.rename(from = file.path(paste0(BioGeoBEARS_directory_path,"RES_clado_events_tables.Rdata")),
-                to = file.path(paste0(BioGeoBEARS_directory_path,prefix_for_files,"_RES_clado_events_tables.Rdata")))
+    file.rename(from = file.path(BioGeoBEARS_directory_path, "RES_ana_events_tables.Rdata"),
+                to = file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_RES_ana_events_tables.Rdata")))
+    file.rename(from = file.path(BioGeoBEARS_directory_path,"RES_ana_events_tables_PARTIAL.Rdata"),
+                to = file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_RES_ana_events_tables_PARTIAL.Rdata")))
+    file.rename(from = file.path(BioGeoBEARS_directory_path, "RES_clado_events_tables.Rdata"),
+                to = file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files,"_RES_clado_events_tables.Rdata")))
   }
 
   ## Convert BioGeoBEARS BSM output to simmaps
-  all_simmaps <- BSMs_to_phytools_simmaps(model_fit = best_model_fit, phylo = phylo, BSM_output = BSM_output)
+  all_simmaps <- convert_BSMs_to_simmaps(model_fit = best_model_fit, phylo = phylo, BSM_output = BSM_output)
 
   # Print simmap n°1
   # plot(all_simmaps[1])
@@ -2501,50 +2670,50 @@ prepare_trait_data_for_biogeographic_data <- function (
   {
     if (is.null(prefix_for_files))
     {
-      files_path <- BioGeoBEARS_directory_path
+      files_path <- file.path(BioGeoBEARS_directory_path)
     } else {
-      files_path <- paste0(BioGeoBEARS_directory_path, prefix_for_files, "_")
+      files_path <- file.path(BioGeoBEARS_directory_path, paste0(prefix_for_files, "_"))
     }
 
     # Remove input files
-    file.remove(file.path(paste0(BioGeoBEARS_directory_path,"phylo.tree")))
-    file.remove(file.path(paste0(BioGeoBEARS_directory_path,"tip_ranges.data")))
+    file.remove(file.path(BioGeoBEARS_directory_path, "phylo.tree"))
+    file.remove(file.path(BioGeoBEARS_directory_path, "tip_ranges.data"))
 
     # Remove BSM files
-    file.remove(file.path(paste0(BioGeoBEARS_directory_path,"RES_ana_events_tables.Rdata")))
-    file.remove(file.path(paste0(BioGeoBEARS_directory_path,"RES_ana_events_tables_PARTIAL.Rdata")))
-    file.remove(file.path(paste0(BioGeoBEARS_directory_path,"RES_clado_events_tables.Rdata")))
+    file.remove(file.path(BioGeoBEARS_directory_path, "RES_ana_events_tables.Rdata"))
+    file.remove(file.path(BioGeoBEARS_directory_path, "RES_ana_events_tables_PARTIAL.Rdata"))
+    file.remove(file.path(BioGeoBEARS_directory_path, "RES_clado_events_tables.Rdata"))
 
     # Remove models outputs
     if ("DEC" %in% evolutionary_models)
     {
-      file.remove(file.path(paste0(BioGeoBEARS_directory_path,"DEC_run_log.txt")))
-      file.remove(file.path(paste0(BioGeoBEARS_directory_path,"DEC_fit.rds")))
+      file.remove(file.path(BioGeoBEARS_directory_path, "DEC_run_log.txt"))
+      file.remove(file.path(BioGeoBEARS_directory_path, "DEC_fit.rds"))
     }
     if ("DEC+J" %in% evolutionary_models)
     {
-      file.remove(file.path(paste0(BioGeoBEARS_directory_path,"DEC_J_run_log.txt")))
-      file.remove(file.path(paste0(BioGeoBEARS_directory_path,"DEC_J_fit.rds")))
+      file.remove(file.path(BioGeoBEARS_directory_path, "DEC_J_run_log.txt"))
+      file.remove(file.path(BioGeoBEARS_directory_path, "DEC_J_fit.rds"))
     }
     if ("DIVALIKE" %in% evolutionary_models)
     {
-      file.remove(file.path(paste0(BioGeoBEARS_directory_path,"DIVALIKE_run_log.txt")))
-      file.remove(file.path(paste0(BioGeoBEARS_directory_path,"DIVALIKE_fit.rds")))
+      file.remove(file.path(BioGeoBEARS_directory_path, "DIVALIKE_run_log.txt"))
+      file.remove(file.path(BioGeoBEARS_directory_path, "DIVALIKE_fit.rds"))
     }
     if ("DIVALIKE+J" %in% evolutionary_models)
     {
-      file.remove(file.path(paste0(BioGeoBEARS_directory_path,"DIVALIKE_J_run_log.txt")))
-      file.remove(file.path(paste0(BioGeoBEARS_directory_path,"DIVALIKE_J_fit.rds")))
+      file.remove(file.path(BioGeoBEARS_directory_path, "DIVALIKE_J_run_log.txt"))
+      file.remove(file.path(BioGeoBEARS_directory_path, "DIVALIKE_J_fit.rds"))
     }
     if ("BAYAREALIKE" %in% evolutionary_models)
     {
-      file.remove(file.path(paste0(BioGeoBEARS_directory_path,"BAYAREALIKE_run_log.txt")))
-      file.remove(file.path(paste0(BioGeoBEARS_directory_path,"BAYAREALIKE_fit.rds")))
+      file.remove(file.path(BioGeoBEARS_directory_path, "BAYAREALIKE_run_log.txt"))
+      file.remove(file.path(BioGeoBEARS_directory_path, "BAYAREALIKE_fit.rds"))
     }
     if ("BAYAREALIKE+J" %in% evolutionary_models)
     {
-      file.remove(file.path(paste0(BioGeoBEARS_directory_path,"BAYAREALIKE_J_run_log.txt")))
-      file.remove(file.path(paste0(BioGeoBEARS_directory_path,"BAYAREALIKE_J_fit.rds")))
+      file.remove(file.path(BioGeoBEARS_directory_path, "BAYAREALIKE_J_run_log.txt"))
+      file.remove(file.path(BioGeoBEARS_directory_path, "BAYAREALIKE_J_fit.rds"))
     }
 
     # If empty, remove the BioGeoBEARS_directory
@@ -2559,12 +2728,14 @@ prepare_trait_data_for_biogeographic_data <- function (
   {
     # With all ranges
     output <- list(densityMaps = densityMaps_all_ranges,
-                   trait_data_type = "biogeographic")
+                   trait_data_type = "biogeographic",
+                   nb_simulations = nb_simulations)
   } else {
     # With muti-area ranges split into unique areas + all ranges
     output <- list(densityMaps = densityMaps_unique_areas,
                    densityMaps_all_ranges = densityMaps_all_ranges,
-                   trait_data_type = "biogeographic")
+                   trait_data_type = "biogeographic",
+                   nb_simulations = nb_simulations)
   }
 
   # Include ACE if requested
@@ -2612,7 +2783,7 @@ prepare_trait_data_for_biogeographic_data <- function (
 #'
 #' @return The function returns a list with three elements.
 #' * `$model_comparison_df` Data.frame summarizing information to compare model fits. It includes the model name (`$model`),
-#'   the log-likelihood (`$logLik`), the number of free-parameters (`$k`), the AIC (`$AICc`), the corrected AIC (`$AICc`),
+#'   the log-likelihood (`$logLik`), the number of free-parameters (`$k`), the AIC (`$AIC`), the corrected AIC (`$AICc`),
 #'   the delta to the best/lowest AICc (`$delta_AICc`), the Akaike weights (`$Akaike_weights`), and their rank based on AICc (`$rank`).
 #' * `$best_model_name` Character string. Name of the best model.
 #' * `$best_model_fit` List containing the output of [geiger::fitContinuous()] or [geiger::fitDiscrete()] for the model with the best fit.
@@ -2795,10 +2966,11 @@ select_best_trait_model_from_geiger <- function (list_model_fits)
 #'  ## Prepare phylo
 #'
 #'  # Set path to BioGeoBEARS directory
-#'  BioGeoBEARS_directory_path = "./BioGeoBEARS_directory/"
+#'  BioGeoBEARS_directory_path = tempfile("BioGeoBEARS_directory_")
+#'  dir.create(BioGeoBEARS_directory_path, recursive = TRUE, showWarnings = FALSE)
 #'
 #'  # Export phylo
-#'  path_to_phylo <- BioGeoBEARS::np(paste0(BioGeoBEARS_directory_path, "phylo.tree"))
+#'  path_to_phylo <- BioGeoBEARS::np(file.path(BioGeoBEARS_directory_path, "phylo.tree"))
 #'  write.tree(phy = eel.tree, file = path_to_phylo)
 #'
 #'  ## Prepare range data
@@ -2811,7 +2983,7 @@ select_best_trait_model_from_geiger <- function (list_model_fits)
 #'  unique_areas <- unique(unlist(unique_areas_in_ranges_list))
 #'  unique_areas <- unique_areas[order(unique_areas)]
 #'
-#'  # Loop per unique areas
+#'  # Loop per unique area
 #'  for (i in seq_along(unique_areas))
 #'  {
 #'    # i <- 1
@@ -2827,7 +2999,7 @@ select_best_trait_model_from_geiger <- function (list_model_fits)
 #'  }
 #'  # Extract binary df of presence/absence
 #'  binary_df <- ranges_df[, -1]
-#'  # Convert character strings into numerical factors
+#'  # Convert character strings into numeric factors
 #'  binary_df_num <- as.data.frame(apply(X = binary_df, MARGIN = 2, FUN = as.numeric))
 #'  row.names(binary_df_num) <- names(tip_data)
 #'  names(binary_df_num) <- unique_areas
@@ -2836,7 +3008,7 @@ select_best_trait_model_from_geiger <- function (list_model_fits)
 #'  Taxa_bioregions_tipranges_obj <- BioGeoBEARS::define_tipranges_object(tmpdf = binary_df_num)
 #'
 #'  # Set path to tip ranges object
-#'  path_to_tip_ranges <- BioGeoBEARS::np(paste0(BioGeoBEARS_directory_path,"tip_ranges.data"))
+#'  path_to_tip_ranges <- BioGeoBEARS::np(file.path(BioGeoBEARS_directory_path, "tip_ranges.data"))
 #'
 #'  # Export tip ranges in Lagrange/PHYLIP format
 #'  BioGeoBEARS::save_tipranges_to_LagrangePHYLIP(
@@ -2916,8 +3088,10 @@ select_best_model_from_BioGeoBEARS <- function (list_model_fits)
   ## Control for BioGeoBEARS install
   if (!requireNamespace("BioGeoBEARS", quietly = TRUE))
   {
-    stop("Package 'BioGeoBEARS' is needed for this function to work.
-       Please install it manually from: https://github.com/nmatzke/BioGeoBEARS")
+    stop("Package 'BioGeoBEARS' is needed to work with biogeographic data.
+       Please install it manually from: https://github.com/nmatzke/BioGeoBEARS;
+       or from the alterative deepSTRAPP repository (https://maeldore.github.io/drat).
+       For instructions, see the Dependencies section on deepSTRAPP homepage (https://github.com/MaelDore/deepSTRAPP).")
   }
 
   # Homemade function to extract the number of observations from BioGeoBEARS model outputs
@@ -3011,793 +3185,59 @@ generate_list_ranges <- function (areas_list, max_range_size, include_null_range
   return(ranges_list)
 }
 
-### Helper function to produce densityMap from simmaps ####
-# Original function written by Liam Revell, 2012
-# Input = simmaps
+## Helper function to restore initial branch length in scaled contMap ####
 
-#' @title Plot posterior density of stochastic mapping on a tree
+#' @title Restore initial branch length in scaled contMap
 #'
-#' @description Visualize posterior probability density from stochastic mapping using a color gradient on the tree.
-#'   Original function written by Liam Revell, 2012 in the [phytools] package: [phytools::densityMap()].
+#' @description Restore the initial branch length in scaled contMap based on the original tree (before scaling).
 #'
-#' @inheritParams phytools::densityMap
-#' @param tol Positive numerical. To set the tolerance used to match node ages and time steps (i.e., onsider them equal). Default = 1e-5.
-#' @param verbose Logical. To display or progress every 100 edges. Default = `TRUE`.
-#' @param col_scale Character string vector. To set the color scale manually. Need to provide 1001 colors for the scale.
-#'   If `NULL` (the default), the `rainbow()` color scale will be used.
+#' @param contMap List of class `"contMap"`, typically generated with [phytools::contMap()],
+#'   that contains a phylogenetic tree and associated ancestral trait estimates mapped along branches in `contMap$tree$maps`.
+#' @param initial_tree Object of class `"phylo"`. The original phylogenetic tree, before scaling.
 #'
-#' @return The function plots a tree with mapped trait probability densities and returns an object of class `densityMap` invisibly.
-#'   A `densityMap` is a list with three elements.
-#'     * `$tree` List of at least 8 elements. Includes the phylogeny, the trait evolution model data from the simmaps, and the newly mapped trait posterior densities.
-#'       * `$maps` List of N elements, one per edge. Each list comprises a named numerical vector that represent changes in posterior probability density of the focal state along segments of equal time.
-#'         Named are posterior probabilities scaled from 0 to 1000. Values are length of the segments. Segments are ordered from root to tips.
-#'       * `$mapped.edge` Matrix of edge per posterior probability summarizing the overall length of each edge attributed to a specific posterior probabiliy value.
-#'       * `$Q` Numerical square matrix summarizing instantaneous transition rates between states as estimated from the evolutionary model.
-#'       Rows = initial states. Cols = final states.
-#'       * `$logL` Numerical. Log-likelihood of the data as optimized when estimated model parameters.
-#'     * `$col` Named character string vector. Color scale used to map posterior probabilities. Names are the posterior probabilities scaled from 0 to 1000. Values are the colors.
-#'     * `$states` Character string. The name of the states.
+#' @return The function returns the rescaled contMap as an object of class `"contMap"`.
+#'   It contains a `$tree` element of classes `"simmap"` and `"phylo"`, that itself includes:
+#'   * `$maps` An updated list of named numeric vectors. Provides the mapping of trait values along each rescaled edge.
+#'   * `$mapped.edge` An updated matrix. Provides the evolutionary time spent across trait values (columns) along the rescaled edges (rows).
 #'
-#' @details Wrapped function of [phytools::densityMap()].
-#'   Additions to the initial function:
-#'   * Can modify manually the tolerance to handle issue with mismatch between node ages and time steps used.
-#'   * Can print progress across egdes
-#'   * Can provide a manual color scale to replace the default rainbow scale. The color scale must have 1001 colors.
+#' @seealso [phytools::contMap()]
 #'
-#' @author Maël Doré. Initial function by Liam Revell, 2012 in the [phytools] package.
-#'
-#' @seealso [phytools::densityMap()]
+#' @author Maël Doré
 #'
 #' @noRd
 #'
 
-densityMap_custom <- function (trees, res = 100, fsize = NULL, ftype = NULL, lwd = 3,
-                               tol = 1e-5, verbose = T, col_scale = NULL,
-                               check = FALSE, legend = NULL, outline = FALSE, type = "phylogram",
-                               direction = "rightwards", plot = TRUE, ...)
+restore_contMap_branch_lengths <- function(contMap, initial_tree)
 {
-  # Set graphical parameters
-  if (methods::hasArg(mar))
-    mar <- list(...)$mar
-  else mar <- rep(0.3, 4)
-  if (methods::hasArg(offset))
-    offset <- list(...)$offset
-  else offset <- NULL
-  if (methods::hasArg(states))
-    states <- list(...)$states
-  else states <- NULL
-  if (methods::hasArg(hold))
-    hold <- list(...)$hold
-  else hold <- TRUE
-  if (length(lwd) == 1)
-    lwd <- rep(lwd, 2)
-  else if (length(lwd) > 2)
-    lwd <- lwd[1:2]
+  # Initiate new contMap
+  updated_contMap <- contMap
 
-  # Adjust tolerance
-  tol <- tol
+  # Extract rescaled tree
+  tree_rescaled <- contMap$tree
 
-  # Check validity of the class of the input object
-  if (!inherits(trees, "multiPhylo") && inherits(trees, "phylo"))
+  # Identify branch-level multiplicative factors applied for scaling
+  recaling_factors <- initial_tree$edge.length / tree_rescaled$edge.length
+
+  # Rescale branch lengths
+  tree_rescaled$edge.length <- initial_tree$edge.length
+
+  # Loop along edges to rescale branch segment lengths
+  for (i in seq_along(tree_rescaled$maps))
   {
-    stop("trees not \"multiPhylo\" object; just use plotSimmap.")
-  }
-  if (!inherits(trees, "multiPhylo"))
-  {
-    stop("trees should be an object of class \"multiPhylo\".")
+    tree_rescaled$maps[[i]] <- tree_rescaled$maps[[i]] * recaling_factors[i]
   }
 
-  # Extract root age
-  h <- sapply(unclass(trees), function(x) max(phytools::nodeHeights(x)))
+  # Update $mapped.edge based on
+  tree_rescaled$mapped.edge <- makeMappedEdge(edge = tree_rescaled$edge, maps = tree_rescaled$maps)
+  tree_rescaled$mapped.edge <- tree_rescaled$mapped.edge[, order(as.numeric(colnames(tree_rescaled$mapped.edge)))]
 
-  # Define time steps
-  steps <- 0:res/res * max(h)
+  # Update $tree in contMap
+  updated_contMap$tree <- tree_rescaled
 
-  # Rescale trees to ensure they all have the same root age
-  trees <- phytools::rescaleSimmap(trees, totalDepth = max(h))
-
-  # Check that phylogeny topology and branch length are equal
-  if (check)
-  {
-    X <- matrix(FALSE, length(trees), length(trees))
-    for (i in 1:length(trees)) X[i, ] <- sapply(trees, ape::all.equal.phylo,
-                                                current = trees[[i]])
-    if (!all(X))
-      stop("some of the trees don't match in topology or relative branch lengths")
-  }
-
-  # Extract first tree as reference
-  tree <- trees[[1]]
-
-  # Remove class
-  trees <- unclass(trees)
-
-  # Extract all states from the first tree (dangerous if some states are not present in this tree but in other!)
-  if (is.null(states))
-  {
-    ss <- sort(unique(c(phytools::getStates(tree, "nodes"), phytools::getStates(tree, "tips"))))
-  }  else {
-    ss <- states
-  }
-
-  # If states are not binary, rename the first two states as "0" and "1" (dangerous as if there are more states, will lead to errors)
-  if (!all(ss == c("0", "1")))
-  {
-    c1 <- paste(sample(c(letters, LETTERS), 6), collapse = "")
-    c2 <- paste(sample(c(letters, LETTERS), 6), collapse = "")
-    trees <- lapply(trees, phytools::mergeMappedStates, ss[1], c1)
-    trees <- lapply(trees, phytools::mergeMappedStates, ss[2], c2)
-    trees <- lapply(trees, phytools::mergeMappedStates, c1, "0")
-    trees <- lapply(trees, phytools::mergeMappedStates, c2, "1")
-  }
-
-  # Extract all node ages per edge
-  H <- phytools::nodeHeights(tree)
-  # message("sorry - this might take a while; please be patient")
-
-  # Reinitiate the map of the reference tree with NULL data
-  tree$maps <- vector(mode = "list", length = nrow(tree$edge))
-
-  # Loop per edge/item in tree$maps
-  for (i in 1:nrow(tree$edge))
-  {
-    # i <- 5
-    # i <- 983
-
-    # YY = Matrix of ages to use as time step along edge i
-    # Include start (0) and end (edge length)
-    # One raw = one interval
-    # Columns = Start and End relative age
-    YY <- cbind(c(H[i, 1], steps[intersect(which(steps > H[i, 1]), which(steps < H[i, 2]))]),
-                c(steps[intersect(which(steps > H[i, 1]), which(steps < H[i, 2]))], H[i, 2])) - H[i, 1]
-
-    # Initiate vector of final time step values for edge i
-    ZZ <- rep(0, nrow(YY))
-
-    # Loop per trees/simmaps
-    for (j in 1:length(trees))
-    {
-      # j <- 1
-
-      # XX = a matrix of the states detected for edge i on simmap j
-      # One row = one state
-      # Colmuns = start and end relative age
-      XX <- matrix(data = 0,
-                   nrow = length(trees[[j]]$maps[[i]]),
-                   ncol = 2,
-                   dimnames = list(names(trees[[j]]$maps[[i]]),
-                                   c("start", "end")))
-      # Fill the first raw with information on start and end relative age of the first state
-      XX[1, 2] <- trees[[j]]$maps[[i]][1]
-
-      # Case with multiple states: fill information for other states
-      if (length(trees[[j]]$maps[[i]]) > 1)
-      {
-        for (k in 2:length(trees[[j]]$maps[[i]]))
-        {
-          XX[k, 1] <- XX[k - 1, 2]
-          XX[k, 2] <- XX[k, 1] + trees[[j]]$maps[[i]][k]
-        }
-      }
-
-      # Loop per time interval wanted for the density mapping
-      for (k in 1:nrow(YY))
-      {
-        # k <- 1
-
-        # Detect which state start before the k time step
-        lower <- which(XX[, 1] <= YY[k, 1])
-        lower <- lower[length(lower)] # Take the last one as the last state recorded before the beginning of the time step
-
-        # Detect which state end after the k time step
-        upper <- which(XX[, 2] >= (YY[k, 2] - tol))[1]
-
-
-        AA <- 0
-        names(lower) <- names(upper) <- NULL
-        if (!all(XX == 0))
-        {
-          # Case for internal edge (end time > 0)
-
-          # Loop per states on the time interval
-          for (l in lower:upper)
-          {
-            # Compute weighted mean of the time interval
-            AA <- AA + (min(XX[l, 2], YY[k, 2]) - max(XX[l, 1], YY[k, 1]))/(YY[k, 2] - YY[k, 1]) * as.numeric(rownames(XX)[l])
-          }
-        } else {
-          # Case for tips (or null branches) (start and end time = 0)
-          AA <- as.numeric(rownames(XX)[1]) # Use the tip state
-        }
-        # Increment the final value of the edge i
-        ZZ[k] <- ZZ[k] + AA/length(trees)
-      }
-    }
-    # Record time steps length
-    tree$maps[[i]] <- YY[, 2] - YY[, 1]
-
-    # Record time steps continuous value as names of the maps of edge i
-    names(tree$maps[[i]]) <- round(ZZ * 1000) # Convert proportion in a scale from 0 to 1000
-
-    # Print progress every 100 edges
-    if ((i %% 100 == 0) & verbose)
-    {
-      cat(paste0(Sys.time(), " - Posterior probability computed for edge n\u00B0", i, "/", nrow(tree$edge),"\n"))
-    }
-  }
-
-  # Create color scale
-  if (is.null(col_scale))
-  {
-    # cols <- grDevices::rainbow(n =1001, start = 0.7, end = 0) # Initial HSV color scale from phytools::contMap
-    cols <- grDevices::rainbow(n = 1001, s = 0.8, start = 0.7, end = 0) # HSV color space with less saturation
-    # cols <- colorspace::rainbow_hcl(n = 1001, c = 90, l = 65, start = 240) # With HCL color space
-    names(cols) <- 0:1000
-  } else {
-    cols <- col_scale
-  }
-
-  # Recreate map using continuous values
-  tree$mapped.edge <- makeMappedEdge(tree$edge, tree$maps)
-  tree$mapped.edge <- tree$mapped.edge[, order(as.numeric(colnames(tree$mapped.edge)))]
-
-  class(tree) <- c("simmap", setdiff(class(tree), "simmap"))
-  attr(tree, "map.order") <- "right-to-left"
-  x <- list(tree = tree, cols = cols, states = ss)
-  class(x) <- "densityMap"
-
-  # Plot
-  if (plot)
-    plot(x, fsize = fsize, ftype = ftype, lwd = lwd,
-         legend = legend, outline = outline, type = type,
-         mar = mar, direction = direction, offset = offset,
-         hold = hold)
-
-  # Return final simmap
-  invisible(x)
+  return(updated_contMap)
 }
 
 
-### Helper functions to convert BioGeoBEARS BSM outputs into phytools.simmaps ####
-
-#' @title Convert Biogeographic Stochastic Map (BSM) to phytools SIMMAP stochastic map (SM) format
-#'
-#' @description These functions converts a Biogeographic Stochastic Map (BSM) output from BioGeoBEARS into
-#'  a `simmap` object from R package `{phytools}` (See [phytools::make.simmap()]).
-#'
-#'  They require a model fit with `BioGeoBEARS::bears_optim_run()` and the output of a Biogeographic Stochastic Mapping
-#'  performed with `BioGeoBEARS::runBSM()` to produce `simmap` objects as phylogenies with the associated
-#'  mapping of range evolution along branches across simulations.
-#'
-#'   * [BSM_to_phytools_simmap()]: Produce one `simmap` for the required simulation (index of the simulation provided with `sim_index`).
-#'   * [BSMs_to_phytools_simmaps()]: Produce all `simmap` objects for all simulations stored in a unique `multiSimmap` object.
-#'
-#'  Initial functions in R package BioGeoBEARS by Nicholas J. Matzke:
-#'  * `BioGeoBEARS::BSM_to_phytools_SM()`
-#'  * `BioGeoBEARS::BSMs_to_phytools_SMs()`
-#'
-#' # Notes on BioGeoBEARS
-#'
-#'  The R package `BioGeoBEARS` is needed for this function to work with biogeographic data.
-#'  Please install it manually from: \href{https://github.com/nmatzke/BioGeoBEARS}{https://github.com/nmatzke/BioGeoBEARS}.
-#'
-#' # Notes on using the resulting simmap object in phytools (adapted from Nicholas J. Matzke)
-#'
-#'  The phytools functions, like [phytools::countSimmap()], will only count the anagenetic events
-#'  (range transitions occurring along branches) as it was written assuming purely anagenetic models.
-#'
-#'  It remains possible to extract cladogenetic events (range transitions occurring at speciation)
-#'  by comparing the last-state-below-a-node with the descendant-pairs-above-a-node.
-#'  However, it is recommended to use the built-in functions from BioGeoBEARS to summarize
-#'  the biogeographic history based on the tables of cladogenetic and anagenetic events obtained
-#'  from `BioGeoBEARS::runBSM()`. `simmap` objects should primarily be considered as a tool for visualization.
-#'
-#'  Associated functions in R package `BioGeoBEARS`:
-#'
-#'  * `BioGeoBEARS::simulate_source_areas_ana_clado()`: To select randomly a unique area source for transition from a multi-area state to a single area.
-#'  * `BioGeoBEARS::get_dmat_times_from_res()`: To generate matrices of range expansion from source area to destination area.
-#'  * `BioGeoBEARS::count_ana_clado_events()`: To count the number and type of events from BSM tables.
-#'  * `BioGeoBEARS::hist_event_counts()`: To plot histograms of event counts across BSM tables.
-#'
-#'  Please note carefully that area-to-area dispersal events are not identical with the state transitions.
-#'  For example, a state can be a geographic range with multipleareas, but under the logic of DEC-type models,
-#'  a range-expansion event like  ABC->ABCD actually means that a dispersal happened from some specific area (A, B, or C)
-#'  to the new area. BSMs track this area-to-area sourcing in its cladogenetic and anagenetic event tables,
-#'  at least if `BioGeoBEARS::simulate_source_areas_ana_clado()` has been run on the output of `BioGeoBEARS::runBSM()`.
-#'
-#' @param model_fit A BioGeoBEARS results object, produced by ML inference via `BioGeoBEARS::bears_optim_run()`.
-#' @param phylo Time-calibrated phylogeny used in the BioGeoBEARS analyses to produce the historical biogeographic inference
-#'  and run the Biogeographic Stochastic Mapping. Object of class `"phylo"` as defined in `{ape}`.
-#' @param BSM_output A list with two objects, a cladogenetic events table and an anagenetic events table, as the result of
-#'   Biogeographic Stochastic Mapping conducted with `BioGeoBEARS::runBSM()`.
-#' @param sim_index Integer. Index of the biogeographic simulation targeted to produce the `simmap` with [BSM_to_phytools_simmap()].
-#'
-#' @export
-#' @importFrom plyr ldply
-#'
-#' @details These functions are slight adaptations of original functions from the R Package `BioGeoBEARS` by N. Matzke.
-#'
-#'  Initial functions: `BioGeoBEARS::BSM_to_phytools_SM()` `BioGeoBEARS::BSMs_to_phytools_SMs()`
-#'
-#'  Changes:
-#'  * Solves issue with differences in ranges allowed across time-strata.
-#'  * Requires directly the output of `BioGeoBEARS::runBSM()` instead of separated cladogenetic and anagenetic event tables.
-#'  * Update the documentation.
-#'
-#' @return The [BSM_to_phytools_simmap()] function returns a list with two elements:
-#'   * `$simmap` A unique `simmap` for a given biogeographic simulation as an object of classes `c("simmap", "phylo")`.
-#'     This is a modified `{ape}` tree with additional elements to report range mapping, model parameters and likelihood.
-#'     - `$maps` A list of named numerical vectors. Provides the mapping of ranges along each remaining edge.
-#'       Names are the ranges. Values are residence times in each state across segments
-#'     - `$mapped.edge` A numerical matrix. Provides the evolutionary time spent across ranges (columns) along the edges (rows).
-#'       row.names() are the node ID at the rootward and tipward ends of each edge.
-#'     - `$Q` Numerical matrix. The transition rates across ranges calculated from the ML parameter estimates of the model.
-#'     - `$logL` Numeric. The log-likelihood of the data under the ML model.
-#'   * `$residence_times` Data.frame with two rows. Summarizes the residence time spent in each range along all branches,
-#'    in (raw) evolutionary time (i.e., branch lengths), and in percentage (perc).
-#'
-#' The [BSMs_to_phytools_simmaps()] function loop around the [BSM_to_phytools_simmap()] function to aggregate all `simmaps`
-#'   from all biogeographic simulations in a unique list of classes `c("multiSimmap", "multiPhylo")`.
-#'   * Each element in the `$simmap` of a biogeographic simulation obtained with [BSM_to_phytools_simmap()].
-#'   * `$residence_times` summary data.frames are not preserved.
-#'
-#' @seealso [phytools::countSimmap()] [phytools::make.simmap()]
-#' `BioGeoBEARS::simulate_source_areas_ana_clado()` `BioGeoBEARS::get_dmat_times_from_res()`
-#' `BioGeoBEARS::count_ana_clado_events()` `BioGeoBEARS::hist_event_counts()`
-#'
-#' @author Nicholas J. Matzke. Contact: \email{matzke@@berkeley.edu}
-#' @author Changes by Maël Doré (see Details)
-#'
-#' @references For BioGeoBEARS: Matzke, Nicholas J. (2018). BioGeoBEARS: BioGeography with Bayesian (and likelihood) Evolutionary Analysis with R Scripts.
-#'    version 1.1.1, published on GitHub on November 6, 2018. \doi{10.5281/zenodo.1478250}. Website: \url{http://phylo.wikidot.com/biogeobears}.
-#'
-#' @examples
-#' if (deepSTRAPP::is_dev_version())
-#' {
-#'  ## Run only if you have R package 'BioGeoBEARS' installed.
-#'  # Please install it manually from: https://github.com/nmatzke/BioGeoBEARS")
-#'
-#'  ## Load phylogeny and tip data
-#'  library(phytools)
-#'  data(eel.tree)
-#'
-#'  \donttest{ # (May take several minutes to run)
-#'  ## Load directly output of prepare_trait_data() run on biogeographic data
-#'  data(eel_biogeo_data, package = "deepSTRAPP")
-#'
-#'  ## Convert BSM output into a unique simmap, including residence times
-#'  simmap_1 <- BSM_to_phytools_simmap(model_fit = eel_biogeo_data$best_model_fit,
-#'                                     phylo = eel.tree,
-#'                                     BSM_output = eel_biogeo_data$BSM_output,
-#'                                     sim_index = 1)
-#'  # Explore output
-#'  str(simmap_1, max.level = 1)
-#'  # Print residence times in each range
-#'  simmap_1$residence_times
-#'  # Plot simmap
-#'  plot(simmap_1$simmap)
-#'
-#'  ## Convert BSM output into all simmaps in a multiSimmap/multiPhylo object
-#'  all_simmaps <- BSMs_to_phytools_simmaps(model_fit = eel_biogeo_data$best_model_fit,
-#'                                          phylo = eel.tree,
-#'                                          BSM_output = eel_biogeo_data$BSM_output)
-#'  # Explore output
-#'  str(all_simmaps, max.level = 1)
-#'  # Plot simmap n°1
-#'  plot(all_simmaps[[1]]) }
-#' }
-#'
-
-## importFrom for BioGeoBEARS
-# importFrom BioGeoBEARS get_Qmat_COOmat_from_BioGeoBEARS_run_object get_sum_statetime_on_branch prt
-
-
-BSM_to_phytools_simmap <- function(model_fit, phylo, BSM_output, sim_index)
-{
-  if (!requireNamespace("BioGeoBEARS", quietly = TRUE))
-  {
-    stop("Package 'BioGeoBEARS' is needed for this function to work.
-       Please install it manually from: https://github.com/nmatzke/BioGeoBEARS")
-  }
-
-  # Extract the tables of cladogenetic and anagenetic events
-  clado_events_table <- BSM_output$RES_clado_events_tables[[sim_index]]
-  ana_events_table <- BSM_output$RES_ana_events_tables[[sim_index]]
-
-  run_parent_brs_TF = TRUE
-  tr <- phylo
-
-  # Error check
-  if ((inherits(ana_events_table, 'data.frame')) && (dim(ana_events_table)[1] > 0))
-  {
-    run_parent_brs_TF = TRUE
-  } else {
-    ana_events_table = NA
-    run_parent_brs_TF = FALSE
-  }
-
-  if (is.null(ana_events_table) == TRUE)
-  {
-    ana_events_table = NA
-    run_parent_brs_TF = FALSE
-  }
-
-  # Is it time-stratified?
-  stratTF = (length(model_fit$inputs$timeperiods) > 0)
-
-  returned_mats = BioGeoBEARS::get_Qmat_COOmat_from_BioGeoBEARS_run_object(BioGeoBEARS_run_object = model_fit$inputs, include_null_range = model_fit$inputs$include_null_range)
-  returned_mats
-  areanames = returned_mats$areanames
-  ranges_list = returned_mats$ranges_list
-
-  # Fix for issue with using only reduced range list
-  reduced_ranges_list = returned_mats$ranges_list
-  max_range_size <- max(nchar(reduced_ranges_list))
-  ranges_list <- generate_list_ranges(areas_list = areanames, max_range_size = max_range_size, include_null_range = model_fit$inputs$include_null_range)
-
-  # Get list of edges:
-  trtable = BioGeoBEARS::prt(tr, printflag=FALSE)
-  trtable
-
-  # View(trtable)
-  # View(clado_events_table)
-
-  # Convert pruningwise edge numbers to cladewise edgenums
-  # The clado_events_table (non-stratified) has the edge numbers in
-  # pruningwise order
-  if (stratTF == FALSE)
-  {
-    pruningwise_edgenums = clado_events_table$parent_br
-    cladewise_edgenums = trtable$parent_br
-    translation_pruning_to_clade_edgenums = as.data.frame(cbind(pruningwise_edgenums, cladewise_edgenums), stringsAsFactors=FALSE)
-    translation_pruning_to_clade_edgenums
-
-    # Error trap for when there are no anagenetic events
-    if (run_parent_brs_TF == TRUE)
-    {
-      ana_events_edgenums_indexes_in_clado_events_table = match(x = ana_events_table$parent_br, table = clado_events_table$parent_br)
-      ana_events_table$parent_br = translation_pruning_to_clade_edgenums$cladewise_edgenums[ana_events_edgenums_indexes_in_clado_events_table]
-    }
-    clado_events_table$parent_br = trtable$parent_br
-    # } else {
-    #   # If same issue with time-stratified clado_events_table, also have duplicates due to branches split across time-strata!
-    #   pruningwise_edgenums = unique(clado_events_table$parent_br)
-    #   cladewise_edgenums = trtable$parent_br
-    #   translation_pruning_to_clade_edgenums = as.data.frame(cbind(pruningwise_edgenums, cladewise_edgenums), stringsAsFactors=FALSE)
-    #   translation_pruning_to_clade_edgenums
-    #   # Error trap for when there are no anagenetic events
-    #   if (run_parent_brs_TF == TRUE)
-    #   {
-    #     # ana_events_edgenums_indexes_in_clado_events_table = match(x = ana_events_table$parent_br, table = clado_events_table$parent_br)
-    #     # ana_events_table$parent_br = translation_pruning_to_clade_edgenums$cladewise_edgenums[ana_events_edgenums_indexes_in_clado_events_table]
-    #     ana_events_table$parent_br = translation_pruning_to_clade_edgenums$cladewise_edgenums[match(x = ana_events_table$parent_br, table = translation_pruning_to_clade_edgenums$pruningwise_edgenums)]
-    #   }
-    #   clado_events_table$parent_br = translation_pruning_to_clade_edgenums$cladewise_edgenums[match(x = clado_events_table$parent_br, table = translation_pruning_to_clade_edgenums$pruningwise_edgenums)]
-  }
-
-
-  # Get the edgenums, exclude the "NA" for the root branch
-  # Order edgenums from smallest to largest
-  nonroot_TF = trtable$node.type != "root"
-  edgenums = trtable$parent_br[nonroot_TF]
-  edgenums_order = order(edgenums)
-  edgenums = edgenums[edgenums_order]
-
-  # Get the "ancestor node, descendant node"
-  ancnodenums = trtable$ancestor[nonroot_TF][edgenums_order]
-  decnodenums = trtable$node[nonroot_TF][edgenums_order]
-
-  # rownames for mapped.edge
-  rownames_for_mapped_edge = paste0(ancnodenums, ",", decnodenums)
-  rownames_for_mapped_edge
-
-  # instantiate "maps" for phytools (a list, with array of state residence times
-  maps = list()
-
-  if (stratTF == TRUE)
-  {
-    time_tops = sort(unique(clado_events_table$time_top))
-    time_bots = sort(unique(clado_events_table$time_bot))
-  }
-
-
-  # Loop through the edges, record any anagenetic events on the branches
-  # fill in "maps"
-  for (i in 1:length(edgenums))
-  {
-    # i <- 410
-    edgenum = edgenums[i]
-
-    # Trap for if ana_events_table is NA (common, if there are no anagenetic events in
-    # the tree at all)
-    if ( (length(ana_events_table) == 1) && (is.na(ana_events_table)) )
-    {
-      edgefound_TF = FALSE
-    } else {
-      edgefound_TF = ana_events_table$parent_br == edgenum
-    }
-
-    # If no anagenetic events are found, the whole branchlength is in the
-    # starting state, as specified in "clado_events_table"
-    if (sum(edgefound_TF) == 0)
-    {
-      # The states should be the same at the branch bottom and top:
-      clado_row_TF = clado_events_table$parent_br == edgenum
-      clado_row_TF[is.na(clado_row_TF)] = FALSE
-
-      # 			if (stratTF == TRUE)
-      # 				{
-      # 				match_time_tops_TF = as.numeric(tmptable_rows$abs_event_time[nnr]) >= as.numeric(trtable$time_top)
-      # 				match_time_bots_TF = as.numeric(tmptable_rows$abs_event_time[nnr]) < as.numeric(trtable$time_bot)
-      # 				}
-
-
-      ## NJM 2019-03-12_ fix: doubles can be found in time-strat, FIX
-      clado_events_table[clado_row_TF,]
-
-
-      # Error check
-      if (sum(clado_row_TF) < 1)
-      {
-        txt = paste0("STOP ERROR #1 in BSM_to_phytools_SM(): 0 rows in clado_events_table match edge number/branch number (parent_br==", edgenum, ").")
-        cat("\n\n")
-        cat(txt)
-        cat("\n\n")
-        stop(txt)
-      }
-
-      if (sum(clado_row_TF) == 1)
-      {
-        bottom_state_num_1based = clado_events_table$sampled_states_AT_brbots[clado_row_TF]
-        top_state_num_1based = clado_events_table$sampled_states_AT_nodes[clado_row_TF]
-
-        # Error handle for the root
-        if (clado_events_table$node.type[clado_row_TF] == "root")
-        {
-          bottom_state_num_1based <- top_state_num_1based
-        }
-      }
-
-      if (sum(clado_row_TF) > 1)
-      {
-        bottom_state_num_1based = unique(clado_events_table$sampled_states_AT_brbots[clado_row_TF])
-        top_state_num_1based = unique(clado_events_table$sampled_states_AT_nodes[clado_row_TF])
-
-        # Error check: there should be only 1 unique state corresponding to this
-        # node (because we are in the section where no anagenetic histories were
-        # found on the branch).
-        if (length(top_state_num_1based) != 1)
-        {
-          txt = "STOP ERROR in BSM_to_phytools_SM(): more than one 'top_state_num_1based' corresponding to the node specified. Printing the matching rows of 'clado_events_table'."
-          cat("\n\n")
-          cat(txt)
-          cat("\n\n")
-
-          print("clado_events_table[clado_row_TF,]")
-          print(clado_events_table[clado_row_TF,])
-
-          print("top_state_num_1based")
-          print(top_state_num_1based)
-
-          stop(txt)
-        } # END if (length(top_state_num_1based) != 1)
-
-        if (length(bottom_state_num_1based) != 1)
-        {
-          txt = "STOP ERROR in BSM_to_phytools_SM(): more than one 'bottom_state_num_1based' corresponding to the node specified. Printing the matching rows of 'clado_events_table'."
-          cat("\n\n")
-          cat(txt)
-          cat("\n\n")
-
-          print("clado_events_table[clado_row_TF,]")
-          print(clado_events_table[clado_row_TF,])
-
-          print("bottom_state_num_1based")
-          print(bottom_state_num_1based)
-
-          stop(txt)
-        } # END if (length(bottom_state_num_1based) != 1)
-      } # END if (sum(clado_row_TF) > 1)
-
-      # Error check
-      if (bottom_state_num_1based != top_state_num_1based)
-      {
-        txt = paste0("STOP ERROR #2 in BSM_to_phytools_SM(): the top_state_num_1based (", top_state_num_1based, "), and bottom_state_num_1based (", bottom_state_num_1based, ") have to match at edge number/branch number (parent_br==", edgenum, "), because no anagenetic events were recorded on this branch.")
-        cat("\n\n")
-        cat(txt)
-        cat("\n\n")
-        stop(txt)
-      }
-
-      # No events detected, so put in the states_array just one state
-      # But, since there are NO events on this branch, don't add to it if
-      # there is already something there (e.g. don't add the same branch for
-      # multiple branch segments)
-      names_of_states_array = c(ranges_list[bottom_state_num_1based])
-      times_in_each_state_array = unique(c(clado_events_table$edge.length[clado_row_TF]))
-
-      if (length(times_in_each_state_array) != 1)
-      {
-        txt = "STOP ERROR in BSM_to_phytools_SM(): more than one 'times_in_each_state_array' corresponding to the node specified. There should only be one time, because no anagenetic events were detected on this branch. Printing the matching rows of 'clado_events_table'."
-        cat("\n\n")
-        cat(txt)
-        cat("\n\n")
-
-        print("clado_events_table[clado_row_TF,]")
-        print(clado_events_table[clado_row_TF,])
-
-        print("times_in_each_state_array")
-        print(times_in_each_state_array)
-
-        stop(txt)
-      } # END if (length(times_in_each_state_array) != 1)
-
-
-      names(times_in_each_state_array) = names_of_states_array
-      times_in_each_state_array
-    } # END if (sum(edgefound_TF) == 0)
-
-    # If some anagenetic events are found, the whole branchlength is in the
-    # starting state, as specified in "clado_events_table"
-    if (sum(edgefound_TF) > 0)
-    {
-      # The states will be listed in the ana_events_table
-      rows_matching_edgenum_TF = ana_events_table$parent_br == edgenum
-      tmp_ana_events_table = ana_events_table[rows_matching_edgenum_TF,]
-
-      # Make sure the tmp_ana_events_table is sorted by REVERSE event_time (along branch)
-      # (Do REVERSE, because older events have larger event ages)
-      tmp_ana_events_table = tmp_ana_events_table[rev(order(tmp_ana_events_table$abs_event_time)),]
-      tmp_ana_events_table
-
-      numevents = sum(rows_matching_edgenum_TF)
-
-      # 1 event, 2 states on branch
-      if (numevents == 1)
-      {
-        first_state_name = c(tmp_ana_events_table$current_rangetxt[1])
-        abs_time_bp_at_branch_top = tmp_ana_events_table$time_bp[1]
-        abs_time_bp_at_branch_bot = abs_time_bp_at_branch_top + tmp_ana_events_table$edge.length[1]
-        first_state_timelength = c(abs_time_bp_at_branch_bot - tmp_ana_events_table$abs_event_time[1])
-
-        # The rest of the branch is the 2nd state
-        further_state_name = c(tmp_ana_events_table$new_rangetxt[1])
-        further_state_time = c(tmp_ana_events_table$edge.length[1] - first_state_timelength)
-
-        times_in_each_state_array = c(first_state_timelength, further_state_time)
-        names_of_states_array = c(first_state_name, further_state_name)
-      } # END if (numevents == 1)
-
-      # 2+ events, 3+ states on branch
-      if (numevents >= 2)
-      {
-        first_state_name = c(tmp_ana_events_table$current_rangetxt[1])
-        #first_state_time = c(tmp_ana_events_table$event_time[1])
-        abs_time_bp_at_branch_top = tmp_ana_events_table$time_bp[1]
-        abs_time_bp_at_branch_bot = abs_time_bp_at_branch_top + tmp_ana_events_table$edge.length[1]
-        first_state_timelength = c(abs_time_bp_at_branch_bot - tmp_ana_events_table$abs_event_time[1])
-
-        nonfirst_rows = 2:numevents
-        nonlast_rows = 1:(numevents-1)
-
-        further_state_names = c(tmp_ana_events_table$new_rangetxt)
-        further_state_times = tmp_ana_events_table$abs_event_time[nonlast_rows] - tmp_ana_events_table$abs_event_time[nonfirst_rows]
-
-        # How much of the branch is left
-        last_time = c(tmp_ana_events_table$edge.length[numevents] - sum(c(first_state_timelength,further_state_times)))
-
-        times_in_each_state_array = c(first_state_timelength, further_state_times, last_time)
-        names_of_states_array = c(first_state_name, further_state_names)
-      } # END if (numevents >= 2)
-
-      names(times_in_each_state_array) = names_of_states_array
-    } # END if (sum(edgefound_TF) > 0)
-
-    # Store
-    maps[[i]] = times_in_each_state_array
-  } # END for (i in 1:length(edgenums))
-
-  maps
-
-
-  # Check that the sums of state residence times add up to the branch lengths
-  simmap_times <- unlist(lapply(X=maps, FUN=sum))
-  tree_times <- tr$edge.length
-  all(simmap_times == tree_times)
-  cbind(simmap_times, tree_times)
-
-  # Check if issue with order of edges
-  simmap_times <- simmap_times[order(simmap_times)]
-  tree_times <- tree_times[order(tree_times)]
-  cbind(simmap_times, tree_times)
-
-  # Compute residence times per states
-  edge_states_matrix <- plyr::ldply(.data = maps, .fun = base::rbind)
-  state_times <- apply(X = edge_states_matrix, MARGIN = 2, FUN = sum, na.rm = T)
-  state_times_reordered <- state_times[ranges_list]
-  names(state_times_reordered) <- ranges_list
-  state_times_reordered[is.na(state_times_reordered)] <- 0
-
-  # Add total
-  state_times_df <- as.data.frame(t(state_times_reordered))
-  state_times_df$total <- sum(state_times_reordered)
-
-  # Add percentage of times
-  state_times_perc <- state_times_df / state_times_df$total * 100
-  state_times_df <- rbind(state_times_df, state_times_perc)
-  row.names(state_times_df) <- c("raw", "perc")
-
-  # # Remove empty states
-  # state_times_df <- state_times_df[, state_times_perc != 0]
-
-  # Make the mapped.edge output
-  mapped.edge = matrix(data=0.0, nrow=length(edgenums), ncol=length(ranges_list))
-  row.names(mapped.edge) = rownames_for_mapped_edge
-  colnames(mapped.edge) = ranges_list
-  mapped.edge
-
-  # For each branch,
-  # 1. Get the list of observed states
-  i = 3
-  observed_states = sort(unique(names(maps[[i]])))
-  observed_states
-
-
-  # sapply to get the sum of each
-  sapply(X = observed_states, FUN = BioGeoBEARS::get_sum_statetime_on_branch, branch_history_map = maps[[i]])
-
-  # Fill in the table for each branch
-  for (i in 1:nrow(mapped.edge))
-  {
-    observed_states = sort(unique(names(maps[[i]])))
-    total_residence_times = sapply(X = observed_states, FUN = BioGeoBEARS::get_sum_statetime_on_branch, branch_history_map = maps[[i]])
-    names_observed_states = names(total_residence_times)
-    mapped.edge[i,names_observed_states] = unname(total_residence_times)
-  }
-  mapped.edge
-
-
-  # Get the transition matrix and logL
-  Q = returned_mats$Qmat
-  # row.names(Q) = ranges_list
-  # colnames(Q) = ranges_list
-  row.names(Q) = reduced_ranges_list
-  colnames(Q) = reduced_ranges_list
-  logL = model_fit$total_loglikelihood
-
-  tr_wSimmap = tr
-  tr_wSimmap$maps = maps
-  tr_wSimmap$mapped.edge = mapped.edge
-  tr_wSimmap$Q = Q
-  tr_wSimmap$logL = logL
-  class(tr_wSimmap) = c("simmap", "phylo")
-  tr_wSimmap
-
-  tr_wSimmap$maps
-  tr_wSimmap$mapped.edge
-
-  return(list(simmap = tr_wSimmap, residence_times = state_times_df))
-}
-
-### Same but for list of multiple BSM maps
-
-#'
-#' @rdname BSM_to_phytools_simmap
-#'
-
-BSMs_to_phytools_simmaps <- function(model_fit, phylo, BSM_output)
-{
-  # Initiate final output
-  simmaps_list = list()
-
-  for (i in 1:length(BSM_output$RES_clado_events_tables))
-  {
-    simmaps_list[[i]] = BSM_to_phytools_simmap(model_fit = model_fit, phylo = phylo, BSM_output = BSM_output, sim_index = i)$simmap
-  }
-
-  class(simmaps_list) = c("multiSimmap", "multiPhylo")
-  return(simmaps_list)
-}
 
 
 ### Helper function to split states in densityMaps ####
