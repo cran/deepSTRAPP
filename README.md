@@ -46,7 +46,7 @@ RAte Permutations on Phylogenies (STRAPP) test. STRAPP tests are based
 on **block-permutations**: rates data are randomized across tips within
 blocks defined by the diversification regimes identified on each tip
 (typically inferred with BAMM). Permuting within regimes rather than
-across the whole tree provide the correct error structure to **account
+across the whole tree provides the correct error structure to **account
 for the phylogenetic pseudoreplication of rates** occurring between tips
 sharing the same macroevolutionary regime. It requires multiple
 independent associations between character states and diversification to
@@ -140,15 +140,21 @@ From **GitHub**, for the current development version, including all
 **example datasets**:
 
 ``` r
-library(devtools)
+## Install one of the two installer packages first
+install.packages("pak")      # Recommended
+# install.packages("remotes")  # Alternative
 
-# If you want to have access to the vignettes/tutorials locally, run:
-remotes::install_github(repo = "MaelDore/deepSTRAPP")
-
-# Altough, this is time-consuming, you can also opt for this light installation:
-remotes::install_github(repo = "MaelDore/deepSTRAPP", build_vignettes = FALSE)
-# You will not have access to the vignettes/tutorials within R, but can still acess them through this website.
+## For a light installation (fast, no vignettes), run:
+pak::pak("MaelDore/deepSTRAPP") # Recommended
+# remotes::install_github(repo = "MaelDore/deepSTRAPP") # Alternative
+# You will not have access to the vignettes/tutorials within R, but can still access them through this website.
 # See the dedicated Sections below.
+
+## For a full installation (with vignettes/tutorials available in R), run:
+options(pkg.build_vignettes = TRUE)
+pak::pak("MaelDore/deepSTRAPP") # Recommended
+# remotes::install_github(repo = "MaelDore/deepSTRAPP", dependencies = TRUE, build_vignettes = TRUE) # Alternative
+# Note: this may be time-consuming. The light installation is enough for most users.
 ```
 
 You may need additional tools for package compilation such as Rtools
@@ -186,8 +192,8 @@ be installed independently.
   GitHub](https://github.com/nmatzke/BioGeoBEARS):
 
 ``` r
-library(devtools)
-devtools::install_github(repo="nmatzke/BioGeoBEARS")
+pak::pak("nmatzke/BioGeoBEARS") # Recommended
+# devtools::install_github(repo="nmatzke/BioGeoBEARS") # Alternative
 ```
 
 For more information, please refer to the [official BioGeoBEARS
@@ -209,8 +215,8 @@ Wiki](http://phylo.wikidot.com/biogeobears).
   GitHub](https://github.com/bstaggmartin/contsimmap):
 
 ``` r
-library(devtools)
-devtools::install_github(repo="bstaggmartin/contsimmap")
+pak::pak("bstaggmartin/contsimmap") # Recommended
+# devtools::install_github(repo="bstaggmartin/contsimmap") # Alternative
 ```
 
 **Reference:**

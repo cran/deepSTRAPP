@@ -103,7 +103,7 @@ with the highest product of marginal probabilities across branches (See \code{\l
 
 Those additional elements are used by \code{\link[=plot_BAMM_rates]{plot_BAMM_rates()}} to display regime shift probabilities and locations.
 
-This function is meant to enable users to inject into the deepSTRAPP framework the results of their own BAMM analyses.
+This function enables users to integrate the results of their own BAMM analyses into the deepSTRAPP framework.
 Alternatively, a full BAMM analysis starting from a time-calibrated phylogeny alone can be carried out within deepSTRAPP with \code{\link[=prepare_diversification_data]{prepare_diversification_data()}}.
 }
 \section{Note on Bayesian Analysis of Macroevolutionary Mixtures (BAMM)}{
@@ -123,20 +123,20 @@ Additionally, you need to format the model output such as in \code{BAMM_object},
 # The key output from a BAMM is the 'event_data.txt' file
 # It can be loaded in R to use as input for deepSTRAPP
 
+# The 'whale_event_data.txt' file used for example here is provided
+# within deepSTRAPP in the 'extdata' directory
+
 library(phytools)
 data(whale.tree)
 
-\dontrun{
-## The 'whale_event_data.txt' file used for example here is not provided within deepSTRAPP
 BAMM_object <- build_BAMM_object(
    phylo = whale.tree,
-   eventdata = "./BAMM_outputs/whale_event_data.txt",
+   eventdata = system.file("extdata", "whale_event_data.txt", package = "deepSTRAPP"),
    burn_in = 0.25, # Remove 25\% as burn-in
    nb_posterior_samples = 1000, # Retain 1000 samples
    expectedNumberOfShifts = 1,
    verbose = TRUE)
 str(BAMM_object, 1)
-}
 
 }
 \references{

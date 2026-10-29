@@ -1,4 +1,9 @@
-### Helper functions to convert BioGeoBEARS BSM outputs into phytools.simmaps ####
+
+### Functions to convert BioGeoBEARS BSM outputs into phytools.simmaps ####
+
+# Based on BioGeoBEARS functions:
+#'  * `BioGeoBEARS::BSM_to_phytools_SM()`
+#'  * `BioGeoBEARS::BSMs_to_phytools_SMs()`
 
 #' @title Convert Biogeographic Stochastic Map (BSM) to phytools SIMMAP stochastic map (SM) format
 #'
@@ -62,6 +67,8 @@
 #'  Changes:
 #'  * Solves issue with differences in ranges allowed across time-strata.
 #'  * Requires directly the output of `BioGeoBEARS::runBSM()` instead of separated cladogenetic and anagenetic event tables.
+#'  * Resolve paths to local tree and tip range files.
+#'  * Restore the S4 class 'BioGeoBEARS_model' if needed.
 #'  * Update the documentation.
 #'
 #' @return The [deepSTRAPP::convert_BSM_to_simmap()] function returns a list with two elements:
@@ -142,6 +149,11 @@ convert_BSM_to_simmap <- function(model_fit, phylo, BSM_output, sim_index)
        or from the alterative deepSTRAPP repository (https://maeldore.github.io/drat).
        For instructions, see the Dependencies section on deepSTRAPP homepage (https://github.com/MaelDore/deepSTRAPP).")
   }
+
+  # Make sure BioGeoBEARS can find/use all the files/objects it needs (see repair_BioGeoBEARS_model_fit())
+  repaired <- repair_BioGeoBEARS_model_fit(model_fit = model_fit, phylo = phylo)
+  model_fit <- repaired$model_fit
+  on.exit(unlink(repaired$tmp_files), add = TRUE)
 
   # Extract the tables of cladogenetic and anagenetic events
   clado_events_table <- BSM_output$RES_clado_events_tables[[sim_index]]
@@ -531,6 +543,11 @@ convert_BSM_to_simmap <- function(model_fit, phylo, BSM_output, sim_index)
 
 convert_BSMs_to_simmaps <- function(model_fit, phylo, BSM_output)
 {
+  # Repair the model_fit object once for all simulations (see repair_BioGeoBEARS_model_fit())
+  repaired <- repair_BioGeoBEARS_model_fit(model_fit = model_fit, phylo = phylo)
+  model_fit <- repaired$model_fit
+  on.exit(unlink(repaired$tmp_files), add = TRUE)
+
   # Initiate final output
   simmaps_list = list()
 
@@ -543,3 +560,94 @@ convert_BSMs_to_simmaps <- function(model_fit, phylo, BSM_output)
   class(simmaps_list) = c("multiSimmap", "multiPhylo")
   return(simmaps_list)
 }
+
+
+### Helper function to make a BioGeoBEARS results object usable on any machine ####
+
+#' @title Repair a BioGeoBEARS results object so it can be used on any machine
+#'
+#' @description Fix on the fly the `model_fit` object, a BioGeoBEARS results object, so BioGeoBEARS functions can use it
+#'  even if it was generated on another machine, or if the files used for the analyses have been moved.
+#'
+#'  `BioGeoBEARS::get_Qmat_COOmat_from_BioGeoBEARS_run_object()` does not rely only on the content of the `model_fit` object.
+#'  It re-reads two files from the disk, using the paths recorded in the object: the phylogeny (`model_fit$inputs$trfn`)
+#'  and the file with tip ranges (`model_fit$inputs$geogfn`). When those are absolute paths from the machine where the model was fitted,
+#'  the files do not exist elsewhere (e.g., for the `eel_biogeo_data` dataset, or for any BioGeoBEARS analysis moved to another machine/directory).
+#'
+#' @param model_fit A BioGeoBEARS results object, produced by ML inference via `BioGeoBEARS::bears_optim_run()`.
+#' @param phylo Time-calibrated phylogeny used in the BioGeoBEARS analyses to produce the historical biogeographic inference
+#'   of the geographic ranges. Object of class `"phylo"`.
+#'
+#' @details The function applies the following fixes to `model_fit$inputs`:
+#'  * `$trfn`: If the file cannot be found, the `phylo` provided is written in a temporary file, and its path replaces the original one.
+#'  * `$geogfn`: If the file cannot be found, the function looks for a file with the same name in the `extdata` directory of deepSTRAPP
+#'    (where the tip ranges files of the example datasets are shipped). Windows paths are handled even if the session runs on Linux/macOS.
+#'    If no file is found, the function stops with an informative error message.
+#'  * `$BioGeoBEARS_model_object`: The S4 class `"BioGeoBEARS_model"` is restored if the object was stored as a plain list
+#'    (as done for the datasets shipped in the package so they can be loaded without BioGeoBEARS installed).
+#'
+#' @return A list with two elements:
+#'   * `$model_fit` The repaired `model_fit` object.
+#'   * `$tmp_files` Character vector. Paths of the temporary files created, which must be deleted by the calling function (e.g., with `on.exit(unlink(...))`).
+#'
+#' @author Maël Doré
+#'
+#' @noRd
+#'
+
+repair_BioGeoBEARS_model_fit <- function(model_fit, phylo)
+{
+  if (!requireNamespace("BioGeoBEARS", quietly = TRUE))
+  {
+    stop("Package 'BioGeoBEARS' is needed to work with biogeographic data.
+       Please install it manually from: https://github.com/nmatzke/BioGeoBEARS;
+       or from the alterative deepSTRAPP repository (https://maeldore.github.io/drat).
+       For instructions, see the Dependencies section on deepSTRAPP homepage (https://github.com/MaelDore/deepSTRAPP).")
+  }
+
+  tmp_files <- character(0)
+  inputs <- model_fit$inputs
+
+  ## 1/ Restore the S4 class of the model object if it was stored as a list
+  model_object <- inputs$BioGeoBEARS_model_object
+  if (!methods::is(model_object, "BioGeoBEARS_model") && is.list(model_object) && ("params_table" %in% names(model_object)))
+  {
+    inputs$BioGeoBEARS_model_object <- methods::new("BioGeoBEARS_model", params_table = model_object$params_table)
+  }
+
+  ## 2/ Phylogeny file: use the stored path if it exists. Otherwise, rewrite it from the 'phylo' provided
+  trfn <- inputs$trfn
+  if (!(is.character(trfn) && length(trfn) == 1 && !is.na(trfn) && file.exists(trfn)))
+  {
+    tmp_trfn <- tempfile(pattern = "deepSTRAPP_phylo_", fileext = ".tree")
+    ape::write.tree(phy = phylo, file = tmp_trfn, digits = 15)
+    inputs$trfn <- tmp_trfn
+    tmp_files <- c(tmp_files, tmp_trfn)
+  }
+
+  ## 3/ Tip ranges file: use the stored path if it exists. Otherwise, look among the files shipped with deepSTRAPP
+  if (!isTRUE(inputs$use_detection_model))
+  {
+    geogfn <- inputs$geogfn
+    if (!(is.character(geogfn) && length(geogfn) == 1 && !is.na(geogfn) && file.exists(geogfn)))
+    {
+      # Handle Windows paths stored in the object even if the session runs on Linux/macOS
+      file_name <- if (is.character(geogfn) && length(geogfn) == 1 && !is.na(geogfn)) basename(gsub("\\\\", "/", geogfn)) else ""
+      shipped_file <- if (nzchar(file_name)) system.file("extdata", file_name, package = "deepSTRAPP") else ""
+      if (nzchar(shipped_file))
+      {
+        inputs$geogfn <- shipped_file
+      } else {
+        stop(paste0("BioGeoBEARS needs the file with the tip ranges used to fit the model, but it was not found at the path recorded in 'model_fit$inputs$geogfn': '",
+                    paste(as.character(geogfn), collapse = ""), "'.\n",
+                    "This happens when the BioGeoBEARS analysis was run on another machine or in a directory that has since been moved.\n",
+                    "Please update the path with: model_fit$inputs$geogfn <- \"path/to/your/tip_ranges.data\""))
+      }
+    }
+  }
+
+  model_fit$inputs <- inputs
+  return(list(model_fit = model_fit, tmp_files = tmp_files))
+}
+
+

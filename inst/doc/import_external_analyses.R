@@ -525,7 +525,7 @@ plot_densityMaps_overlay(whale_densityMaps)
 # # dir.create(path = BioGeoBEARS_directory_path)
 # #
 # # # Store phylogeny in Newick format
-# # write.tree(phylo = eel.tree, file = paste0(BioGeoBEARS_directory_path, "eel.tree"))
+# # write.tree(phy = eel.tree, file = paste0(BioGeoBEARS_directory_path, "eel.tree"))
 # # path_to_phylo <- BioGeoBEARS::np(paste0(BioGeoBEARS_directory_path, "eel.tree"))
 # #
 # # ## Prepare tip ranges for BioGeoBEARS
@@ -560,7 +560,7 @@ plot_densityMaps_overlay(whale_densityMaps)
 # # binary_df <- ranges_df[, -1]
 # # # Convert character strings into numerical factors
 # # binary_df_num <- as.data.frame(apply(X = binary_df, MARGIN = 2, FUN = as.numeric))
-# # row.names(binary_df_num) <- names(tip_data)
+# # row.names(binary_df_num) <- names(eel_range_tip_data)
 # # names(binary_df_num) <- unique_areas
 # #
 # # # Produce tipranges object from numeric df
@@ -605,6 +605,15 @@ plot_densityMaps_overlay(whale_densityMaps)
 # # Please use remotes::install_github(repo = "MaelDore/deepSTRAPP") to install the latest version.
 # data(eel_biogeo_data, package = "deepSTRAPP")
 # DEC_J_fit <- eel_biogeo_data$best_model_fit
+# 
+# # Note: BioGeoBEARS re-reads the phylogeny and the tip ranges files
+# # from the paths recorded in the model object
+# # (in 'DEC_J_fit$inputs$trfn' and 'DEC_J_fit$inputs$geogfn').
+# # If you run your own analyses on one machine and import them on another, or if you move the files,
+# # those paths will not be valid anymore.
+# # Update them with:
+# # DEC_J_fit$inputs$trfn <- "path/to/your/phylo.tree"
+# # DEC_J_fit$inputs$geogfn <- "path/to/your/tip_ranges.data"
 # 
 # # This object is your modeling results
 # # It stores information about model fit and ancestral range estimates at internal nodes
@@ -788,14 +797,16 @@ knitr::include_graphics("figures/7_Import_external_analyses_1.4.5_Biogeo_density
 # ?deepSTRAPP::subset_BAMM_object()
 # ?deepSTRAPP::prune_BAMM_object()
 # 
-# ## Please note that the 'whale_event_data.txt' file used
-# ## in this example here is not provided within deepSTRAPP
+# ## The 'whale_event_data.txt' file used in this example is provided within deepSTRAPP.
+# # It is stored in the 'extdata' directory of the package.
+# # Use system.file() to get its path on your machine.
+# # To import your own BAMM results, provide the path to your own 'event_data.txt' file instead.
 # 
 # ### 2.1/ Build a BAMM_object from an external 'event_data.txt' file resulting from a BAMM run ####
 # 
 # whale_BAMM_object <- build_BAMM_object(
 #     phylo = whale.tree,
-#     eventdata = "./BAMM_outputs/whale_event_data.txt",
+#     eventdata = system.file("extdata", "whale_event_data.txt", package = "deepSTRAPP"),
 #     burn_in = 0.25, # Remove 25% as burn-in
 #     nb_posterior_samples = 1000, # Retain 1000 samples
 #     expectedNumberOfShifts = 1,
@@ -804,7 +815,7 @@ knitr::include_graphics("figures/7_Import_external_analyses_1.4.5_Biogeo_density
 # # Inspect resulting object
 # str(whale_BAMM_object, 1)
 # # Check current number of BAMM posterior samples
-# length(Ponerinae_BAMM_object_old_calib$eventData)
+# length(whale_BAMM_object$eventData)
 # # We have initially 1000 posterior samples in the updated BAMM object
 # 
 # ### 2.2/ Subset the BAMM_object to retain a lower number of posterior samples ####

@@ -44,7 +44,7 @@ knitr::opts_chunk$set(
 # View(Ponerinae_trait_tip_data)
 # 
 # # Extract categorical data with 2-levels
-# Ponerinae_cat_2lvl_tip_data <- setNames(object = Ponerinae_trait_tip_data$fake_cat_2lvl_data,
+# Ponerinae_cat_2lvl_tip_data <- setNames(object = Ponerinae_trait_tip_data$fake_cat_2lvl_tip_data,
 #                                         nm = Ponerinae_trait_tip_data$Taxa)
 # table(Ponerinae_cat_2lvl_tip_data)
 # 
@@ -70,7 +70,7 @@ knitr::opts_chunk$set(
 # pdf(file = "./Ponerinae_cat_2lvl_data_old_calib_on_phylo.pdf", width = 20, height = 150)
 # 
 # # Set plotting parameters
-# old_par <- par(no.readonly = TRUE)
+# old_par <- par()[c("mar", "oma")]
 # par(mar = c(0.1,0.1,0.1,0.1), oma = c(0,0,0,0)) # bltr
 # 
 # # Graph presence/absence using plotTree.datamatrix
